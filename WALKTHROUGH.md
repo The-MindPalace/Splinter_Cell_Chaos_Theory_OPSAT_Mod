@@ -236,15 +236,18 @@ Sources:
 
 *Where:* Cage at the back of the vault.
 
-1. Vault computer: open the cage, take the bonds. Lights-off and sprinklers are there if guards come.
-2. Leaving: thermal on and OCP one emitter of the beam across the vault door, then walk out before it returns.
-3. Or carry a guard's body through the beam. That has to be done before you pick up the bonds.
+1. Vault still shut? Box 1024 in the deposit room first, then the telemetric pick and a lockpick on the two door locks, then the charge on the wheel.
+2. Vault computer: open the cage, take the bonds. Lights-off and sprinklers are there if guards come.
+3. Leaving: thermal on and OCP one emitter of the beam across the vault door, then walk out before it returns.
+4. Or carry a guard's body through the beam. That has to be done before you pick up the bonds.
 
 ### Determine who MCAS Bank purchased the arms for.
 
-*Where:* Computer at the back of the vault.
+*Where:* Computer at the back of the main vault (the door opens with the gear from deposit box 1024).
 
-1. Use the vault computer (hack it too for the email set).
+1. Vault still shut? Get box 1024 in the deposit room first (glass door by the three-man booth): the lock pick and the charge.
+2. At the door: telemetric pick in one side lock, lockpick the other, pausing on each tumbler until green. Charge on the wheel, detonate from a distance.
+3. Inside: OCP the camera at the far end, then use the computer at the back. Hack it too for the email set.
 
 ### Find the name of Lacerda's Panamanian contact.
 
