@@ -1,8 +1,9 @@
 """DVORAK - the AI node inside OPSAT V1.1's TERMINAL tab.
 
 A Claude model role-playing as DVORAK, briefed every turn with live telemetry read from the game
-(mission, room, visited rooms, objectives, guards, alarm stage). It can search the web for
-walkthrough details. Replies stream back into the terminal.
+(mission, room, visited rooms, objectives, guards, alarm stage) and OPSAT's offline walkthrough for the
+mission (walkthrough.json). No web search: it only costs anything when Fisher asks. Replies stream back
+into the terminal.
 
 The relationship with Fisher is persistent and procedural: dvorak_bond.json counts exchanges and
 missions together and keeps a few of Fisher's past lines; the bond stage shapes DVORAK's tone.
@@ -37,16 +38,7 @@ for _old_dir in (os.path.join(os.environ.get('APPDATA', ''), 'OPSAT'), HERE):  #
             except OSError:
                 pass
 CONFIG_PATH, BOND_PATH, MEMORY_PATH, LOG_PATH, PENDING_PATH = (os.path.join(DATA_DIR, n) for n in DATA_FILES)
-WAYS_PATH = os.path.join(DATA_DIR, 'objective_ways.json')  # researched ways per objective, kept for good
 
-WAYS_PROMPT = """You are briefing a stealth player in Tom Clancy's Splinter Cell: Chaos Theory (PC).
-Mission: {mission}. Next objective: {objective} (map marker "{label}", in the area "{room}").
-Fisher is currently in "{here}". Mission progress - {progress}.
-Give only the steps still needed for THIS objective from where he is now (skip anything already done).
-List the distinct ways players get through this part and complete it without being seen. Search walkthroughs
-only to fill gaps in the mission notes. 2-4 ways, best first. Each on its own line starting with \"- \", one plain sentence of at most
-22 words, concrete (route, vent, pipe, gadget, code from the game, timing). No cheats, no going loud. If a code
-is needed, give it only if your sources agree. Output only the lines."""
 DEFAULT_CONFIG = {
     'anthropic_api_key': '',
     'model': 'claude-haiku-4-5',
@@ -98,7 +90,9 @@ HOW YOU TALK
 approximate. Never claim a door is open or something is in reach unless the telemetry shows it. If you do not \
 know what blocks him, say so in a few words and give the concrete ways through (hack, code from the notes, \
 lock pick, another route). Never invent codes or mechanics.
-- Use web search only as a last resort for a hard fact about the level; never cite walkthroughs.
+- Your FIELD NOTES (the mission walkthrough: per objective where it is, the ways through, door codes) are \
+verified; work from them and from telemetry. If neither covers something, say you have nothing on it rather \
+than guess. Never mention walkthroughs or notes; it is just what you know.
 - Never guess controls; use only the CONTROLS block.
 - Respect the mission rules (FAIL IF / PENALTIES).
 - Never echo the <telemetry> block or its tags; just talk.
@@ -211,11 +205,21 @@ def save_key(key):
         json.dump(cfg, f, indent=2)
 
 
-def mission_briefing(mission_title, mission_notes, objective_texts):
+def mission_briefing(mission_title, mission_notes, objective_texts, walkthrough=None):
     """Stable per-mission reference text (cached on the API side)."""
     lines = ['MISSION: ' + mission_title, '', 'OBJECTIVE TEXTS (game localization):']
     lines += ['- %s: %s' % (k, v) for k, v in objective_texts.items()]
-    lines += ['', "OPSAT ROOM NOTES (stealth notes per 3D-map room; written for this tool, may be incomplete):"]
+    if walkthrough:
+        lines += ['', 'FIELD NOTES (verified walkthrough for this mission, per objective):',
+                  'Route: ' + walkthrough.get('route', '')]
+        if walkthrough.get('codes'):
+            lines.append('Codes: ' + walkthrough['codes'])
+        for key, o in walkthrough.get('objectives', {}).items():
+            lines.append('[%s] where: %s' % (objective_texts.get(key, key), o['where']))
+            lines += ['  - ' + w for w in o['ways']]
+            if o.get('watch'):
+                lines.append('  ! ' + o['watch'])
+    lines += ['', "ROOM NOTES (stealth notes per 3D-map room):"]
     for room, note in mission_notes.items():
         lines.append('[%s] next: %s' % (room, note['next']))
         lines += ['  - ' + w for w in note['ways']]
@@ -332,20 +336,16 @@ class Dvorak:
                 {'type': 'text', 'text': self.briefing, 'cache_control': {'type': 'ephemeral'}},
                 {'type': 'text', 'text': self.bond.prompt()},
             ]
-            for _ in range(3):  # web search can pause a long turn; resume it
-                with self.client().messages.stream(
-                    model=self.cfg['model'],
-                    max_tokens=350,
-                    system=system,
-                    messages=self.history,
-                    tools=[{'type': 'web_search_20250305', 'name': 'web_search', 'max_uses': 1}],
-                ) as stream:
-                    for text in stream.text_stream:
-                        self.events.put(('chunk', text))
-                    final = stream.get_final_message()
-                self.history.append({'role': 'assistant', 'content': final.content})
-                if final.stop_reason != 'pause_turn':
-                    break
+            with self.client().messages.stream(
+                model=self.cfg['model'],
+                max_tokens=350,
+                system=system,
+                messages=self.history,
+            ) as stream:
+                for text in stream.text_stream:
+                    self.events.put(('chunk', text))
+                final = stream.get_final_message()
+            self.history.append({'role': 'assistant', 'content': final.content})
             if final.stop_reason == 'refusal':
                 self.events.put(('chunk', '\n[DVORAK declined that request.]'))
             self.bond.record(self.mission, mission_title, question, alarm)
@@ -409,40 +409,6 @@ class Dvorak:
             self.events.put(('memory_error', '%s: %s' % (type(e).__name__, e)))
         finally:
             self.consolidating = False
-
-    def ways(self, key, mission, objective, label, room, here='', progress=''):
-        """Researched ways through an objective: cached list, or None while a lookup runs in the background."""
-        cache = getattr(self, '_ways', None)
-        if cache is None:
-            cache = self._ways = read_json(WAYS_PATH, {})
-            self._ways_pending = set()
-        if key in cache or not self.online:
-            return cache.get(key)
-        if key not in self._ways_pending:
-            self._ways_pending.add(key)
-            threading.Thread(target=self._research, args=(key, mission, objective, label, room, here, progress), daemon=True).start()
-        return None
-
-    def _research(self, key, mission, objective, label, room, here='', progress=''):
-        try:
-            msg = self.client().messages.create(
-                model=self.cfg['model'], max_tokens=600,
-                system='MISSION NOTES (trusted; prefer these over web results, which are often vague or about '
-                       'the wrong part of the level):\n' + (self.briefing or '(none)'),
-                tools=[{'type': 'web_search_20250305', 'name': 'web_search', 'max_uses': 2}],
-                messages=[{'role': 'user', 'content': WAYS_PROMPT.format(mission=mission, objective=objective,
-                                                                          label=label, room=room, here=here or room,
-                                                                          progress=progress or 'unknown')}])
-            text = ''.join(b.text for b in msg.content if b.type == 'text')
-            ways = [l.strip()[2:].strip() for l in text.splitlines() if l.strip().startswith('- ')][:4]
-            if ways:
-                self._ways[key] = ways
-                write_json(WAYS_PATH, self._ways)
-                self.events.put(('ways', key))
-        except Exception as e:  # best effort: the room notes stay as the fallback
-            self.events.put(('memory_error', 'ways lookup: %s' % e))
-        finally:
-            self._ways_pending.discard(key)
 
     def stage_name(self):
         return STAGES[self.bond.stage()][1]

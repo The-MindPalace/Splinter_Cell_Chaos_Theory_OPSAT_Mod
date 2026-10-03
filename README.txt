@@ -17,13 +17,19 @@ Controls:
   The arrow keys are taken off movement in your game profile; WASD moves Sam.
   F2 / F3 still toggle god mode / invisible, but OPSAT and DVORAK ignore them.
 
-TERMINAL  Live next-moves card (where you are, primaries done, next objective + route, what you
-          can do there, any instant-fail rule) above DVORAK. DVORAK = Claude Haiku 4.5; it asks
+TERMINAL  Live next-moves card (where you are, primaries done, the next objective, where it is and
+          the ways through it, any instant-fail rule) above DVORAK. DVORAK = Claude Haiku 4.5; it asks
           for your Anthropic API key once, plans for a pure stealth operator, and remembers your
           campaign across sessions.
-RADAR     Objectives with live ticks and the fail rule on top, the NEXT card and route, then the
-          radar (guards and cones, cameras, objective markers) with alarm / alert / suspicious /
+RADAR     Objectives with live ticks and the fail rule on top, the NEXT card with where / ways / route,
+          then the radar (guards and cones, cameras, objective markers) with alarm / alert / suspicious /
           facing-you / camera counts.
+
+Ways through (free): every objective in all 10 missions has its location and 2-4 stealth ways
+through it, researched once from several full walkthroughs and cross-checked (door codes included).
+OPSAT reads it locally from CheatOverlay\walkthrough.json; the readable version is WALKTHROUGH.md.
+Nothing is looked up online while you play. DVORAK only calls the API when you press Insert and ask
+(no web search, no automatic SITREPs), and answers from the same field notes plus live telemetry.
 
 Your data (API key, DVORAK memory, relationship, chat log) is in %USERPROFILE%\Saved Games\OPSAT and survives
 reinstalling the game or the mod. Delete that folder to start DVORAK from scratch.

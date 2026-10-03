@@ -733,6 +733,7 @@ class Opsat:
         self.hints = {k.lower(): v for k, v in load('hints.json')['missions'].items()}
         self.titles = {k.lower(): v for k, v in load('objectives.json').items()}
         self.rules = {k.lower(): v for k, v in load('rules.json')['missions'].items()}
+        self.walk = {k.lower(): v for k, v in load('walkthrough.json')['missions'].items()}
         self.events = __import__('collections').deque(maxlen=30)  # (time, text) things Sam triggered
         self.lw = LayeredWindow(root)
         self.canvas = PilCanvas()
@@ -744,8 +745,6 @@ class Opsat:
         self.objs, self.room_names = [], []
         self.intel = None
         self.cheats = (False, False)
-        self.ways_for = None    # set by Overlay: objective marker -> researched ways (or None while looking)
-        self.researching = False
         self.chat = []          # [who, text]: who in fisher / dvorak / sys / event
         self.typing = self.key_mode = False
         self.dvorak_online = self.dvorak_busy = False
@@ -808,6 +807,30 @@ class Opsat:
         note = ((self.mission() or {}).get('rooms') or {}).get(room or '')
         return note['ways'] if note else []
 
+    def walkthrough(self):
+        return self.walk.get((self.mission_id or '').lower())
+
+    def note_for(self, nxt=None):
+        """Walkthrough entry {where, ways, watch} for the objective behind a map marker, or for the first pending
+        primary when there is no marker (offline data, walkthrough.json)."""
+        notes = (self.walkthrough() or {}).get('objectives', {})
+        if nxt:
+            keys = [o[0] for o in self.objs if o[2] == nxt['objective']]
+        else:
+            keys = [o[0] for o in self.objs if o[1] == 0 and o[4] in (0, 3)]
+        return next((notes[k] for k in keys if k in notes), None)
+
+    def ways_for(self, nxt=None):
+        return (self.note_for(nxt) or {}).get('ways', [])
+
+    def numbered(self, c, items, x, y, width, px, font, colour, gap=4):
+        """Numbered list with wrapped lines indented under the text, not the number."""
+        for i, text in enumerate(items, 1):
+            c.create_text(x, y, anchor='nw', text=str(i), fill=self.MUTE, font=font)
+            t = c.create_text(x + px(20), y, anchor='nw', text=text, fill=colour, width=width - px(20), font=font)
+            y = c.bbox(t)[3] + px(gap)
+        return y
+
     def next_moves(self):
         """(where/progress line, next line, moves, fail rule) - the live 'what now', no AI involved."""
         must = [r for r in self.objective_rows() if r[2] in (0, 3)]
@@ -818,12 +841,11 @@ class Opsat:
             path = self.route_to(nxt) or []
             via = ('  via ' + ' › '.join(r.replace('_', ' ') for r in path[1:3])) if len(path) > 1 else ''
             nxt_line = '%s   %.0fm%s' % (nxt['label'], relative(self.intel['sam'], nxt['loc'])[0], via)
-        else:
-            nxt_line = 'Get to extraction' if must and done == len(must) else ''
-        ways = self.ways_for(nxt) if nxt and self.ways_for else None
-        moves = ways or (self.room_ways(nxt.get('room')) if nxt else [])[:3] or self.room_ways(self.room)[:3]
-        self.researching = bool(nxt and self.ways_for and ways is None)
-        fail = self.rules.get((self.mission_id or '').lower(), {}).get('fail', [])
+        else:  # no map marker: name the first pending primary instead
+            pending = [r[0] for r in must if r[1] == 0]
+            nxt_line = 'Get to extraction' if must and done == len(must) else (pending[0] if pending else '')
+        moves = self.ways_for(nxt) or (self.room_ways(nxt.get('room')) if nxt else [])[:3] or self.room_ways(self.room)[:3]
+        fail =self.rules.get((self.mission_id or '').lower(), {}).get('fail', [])
         return now, (done, len(must)), nxt_line, moves, (fail[0] if fail else None)
 
     # --- keys ----------------------------------------------------------------
@@ -984,15 +1006,17 @@ class Opsat:
             if nxt_line:
                 t = c.create_text(pad + px(14), y, anchor='nw', text='NEXT  ' + nxt_line, fill=self.BLUE,
                                   width=width - px(28), font=font(11, True))
-                y = c.bbox(t)[3] + px(6)
+                y = c.bbox(t)[3] + px(3)
+            note = self.note_for(self.next_objective()) if nxt_line else None
+            if note:
+                t = c.create_text(pad + px(14), y, anchor='nw', text=note['where'], fill=self.MUTE,
+                                  width=width - px(28), font=self.body(10))
+                y = c.bbox(t)[3] + px(3)
+            y += px(3)
             if moves:
-                t = c.create_text(pad + px(14), y, anchor='nw', fill=self.MUTE, font=font(8, True),
-                                  text='WAYS THROUGH' + ('   researching\u2026' if self.researching else ''))
+                t = c.create_text(pad + px(14), y, anchor='nw', fill=self.MUTE, font=font(8, True), text='WAYS THROUGH')
                 y = c.bbox(t)[3] + px(4)
-            for i, m in enumerate(moves, 1):
-                t = c.create_text(pad + px(14), y, anchor='nw', text='%d   %s' % (i, m), fill=self.SOFT,
-                                  width=width - px(28), font=self.body(11))
-                y = c.bbox(t)[3] + px(4)
+            y = self.numbered(c, moves, pad + px(14), y, width - px(28), px, self.body(11), self.SOFT)
             if warn:
                 t = c.create_text(pad + px(14), y + px(3), anchor='nw', text=warn, fill=RED, width=width - px(28),
                                   font=font(9, True))
@@ -1122,12 +1146,11 @@ class Opsat:
                 t = c.create_text(pad, y, anchor='nw', fill=self.BLUE, font=font(9), width=width,
                                   text=' \u203a '.join(r.replace('_', ' ') for r in path))
                 y = c.bbox(t)[3] + px(6)
-            ways = self.ways_for(nxt) if self.ways_for else None
-            for i, w in enumerate((ways or [])[:3], 1):
-                t = c.create_text(pad, y, anchor='nw', fill=self.SOFT, font=self.body(10), width=width,
-                                  text='%d   %s' % (i, w))
-                y = c.bbox(t)[3] + px(3)
-            if ways:
+            note = self.note_for(nxt)
+            if note:
+                t = c.create_text(pad, y, anchor='nw', text=note['where'], fill=self.MUTE, width=width,
+                                  font=self.body(10))
+                y = self.numbered(c, note['ways'], pad, c.bbox(t)[3] + px(5), width, px, self.body(10), self.SOFT, 3)
                 y += px(4)
         # The radar fills what is left, with the threat counts underneath.
         strip_h = px(40)
@@ -1238,9 +1261,7 @@ class Overlay:
         from dvorak import Dvorak, mission_briefing, save_key
         self.dvorak, self.mission_briefing, self.dvorak_save_key = Dvorak(), mission_briefing, save_key
         self.panel.on_submit = self.ask_dvorak
-        self.panel.ways_for = self.ways_for
         self.panel.dvorak_online = self.dvorak.online
-        self.sitrep_sent = set()
         self.queued = []        # questions typed while DVORAK was still answering
         self.key_asked = False  # asked for the API key this run
         self.keys_down = set()
@@ -1272,26 +1293,6 @@ class Overlay:
                         self.say('panel error:', e)
                 (self.keys_down.add if down else self.keys_down.discard)(vk)
         self.root.after(40, self.poll_keys)
-
-    def ways_for(self, nxt):
-        """Researched ways through the objective behind a map marker (cached; looked up once, in the background)."""
-        panel = self.panel
-        m = panel.mission()
-        if not m:
-            return None
-        key = next((o[0] for o in panel.objs if o[2] == nxt['objective']), nxt['objective'])
-        sect = panel.section()
-        self.dvorak.set_mission(panel.mission_id, self.mission_briefing(m['title'], m['rooms'], sect))
-        obj = next((o for o in panel.objs if o[0] == key), None)
-        title = sect.get(key, nxt['label'])
-        detail = sect.get(obj[3], '') if obj else ''
-        if detail and detail != title:
-            title += ' (' + detail.rstrip('.') + ')'
-        done = [sect[o[0]] for o in panel.objs if o[1] == 1 and sect.get(o[0])]
-        todo = [sect[o[0]] for o in panel.objs if o[1] == 0 and sect.get(o[0])]
-        progress = 'done: %s | still to do: %s' % ('; '.join(done) or 'nothing yet', '; '.join(todo) or 'nothing')
-        return self.dvorak.ways('%s|%s|%d' % (panel.mission_id, nxt['label'], len(done)), m['title'], title,
-                                nxt['label'], nxt.get('room') or '', panel.room or '', progress)
 
     def talk(self):
         panel = self.panel
@@ -1400,8 +1401,8 @@ class Overlay:
             panel.chat.append(['sys', 'No mission telemetry yet. Load a mission or a save first.'])
             panel.render()
             return
-        sect = next((v for k, v in panel.titles.items() if k.startswith('p_' + (panel.mission_id or '').lower())), {})
-        self.dvorak.set_mission(panel.mission_id, self.mission_briefing(m['title'], m['rooms'], sect))
+        self.dvorak.set_mission(panel.mission_id, self.mission_briefing(m['title'], m['rooms'], panel.section(),
+                                                                        panel.walkthrough()))
         if panel.mission() and self.game and self.dvorak.busy:  # queue it; sent when the current reply finishes
             if not quiet:
                 panel.chat.append(['fisher', question])
@@ -1415,7 +1416,7 @@ class Overlay:
         panel.render()
 
     def pump_dvorak(self, mission):
-        """Move streamed reply text into the terminal; auto-SITREP on first open per mission."""
+        """Move streamed reply text into the terminal. DVORAK only speaks when Fisher asks (no automatic calls)."""
         panel, changed = self.panel, False
         panel.bond_info = (self.dvorak.stage_name(),) + self.dvorak.stage_level()
         while True:
@@ -1436,8 +1437,6 @@ class Overlay:
                         panel.chat.append(['dvorak', ''])
                         panel.dvorak_busy = True
                         self.say('dvorak <-', q)
-            elif kind == 'ways':
-                self.say('ways researched:', text)
             elif kind == 'memory':
                 self.say('dvorak memory updated')
             elif kind == 'memory_error':
@@ -1457,10 +1456,6 @@ class Overlay:
             panel.key_mode = True
             panel.start_typing()
             changed = True
-        if (on_terminal and self.dvorak.online and mission and panel.room and mission not in self.sitrep_sent
-                and panel.objs):
-            self.sitrep_sent.add(mission)
-            self.ask_dvorak('SITREP', quiet=True)
         if on_terminal and (changed or panel.dvorak_busy):
             panel.render()
 
