@@ -724,7 +724,7 @@ class Opsat:
     UI = 'Bahnschrift SemiCondensed'   # headings, labels, numbers
     BODY = 'Segoe UI'                  # anything you read: replies, ways, objectives
     MONO = 'Consolas'
-    TABS = ('TERMINAL', 'RADAR')
+    TABS = ('DVORAK', 'INTEL', 'RADAR')
     SLIDE_S = 0.24
     HERE = __import__('os').path.dirname(__import__('os').path.abspath(__file__))
 
@@ -741,7 +741,7 @@ class Opsat:
         self.input = InputBox(root, lambda text: self.submit(), lambda: self.stop_typing())
         self.entry = self.input.entry
         self.open = self.shown = False
-        self.tab = 0
+        self.tab = 1  # INTEL
         self.mission_id = self.room = None
         self.objs, self.room_names = [], []
         self.intel = None
@@ -874,7 +874,7 @@ class Opsat:
             self.render()
 
     def start_typing(self):
-        if not self.open or self.TABS[self.tab] != 'TERMINAL' or self.typing:
+        if not self.open or self.TABS[self.tab] != 'DVORAK' or self.typing:
             return
         self.typing = True
         self.input.force_mask = self.key_mode
@@ -970,10 +970,7 @@ class Opsat:
             x = x0 - px(14)
         c.create_line(pad, px(48), W - pad, px(48), fill=self.FAINT)
         top, width = px(60), W - 2 * pad
-        if self.TABS[self.tab] == 'TERMINAL':
-            self.draw_terminal(c, top, pad, width, H, px, font)
-        else:
-            self.draw_radar(c, top, pad, width, H, px, font)
+        getattr(self, 'draw_' + self.TABS[self.tab].lower())(c, top, pad, width, H, px, font)
         hint = ('ENTER send     ESC cancel' if self.typing else
                 '▲ ▼  open / close      ◀ ▶  tab      INS  ask DVORAK')
         c.create_text(pad, H - px(24), anchor='nw', fill=self.MUTE, font=font(8), text=hint)
@@ -998,7 +995,7 @@ class Opsat:
     def card(self, c, x, y, w, h, px, colour=None):
         c.create_rectangle(x, y, x + w, y + h, fill=colour or self.CARD, outline='', radius=px(8))
 
-    def draw_terminal(self, c, top, pad, width, H, px, font):
+    def draw_next(self, c, top, pad, width, H, px, font):
         # NEXT MOVES card: where you are, progress, the next objective and what you can do there.
         if self.mission_id:
             now, (done, total), nxt_line, moves, warn = self.next_moves()
@@ -1022,14 +1019,7 @@ class Opsat:
             if moves:
                 t = c.create_text(pad + px(14), y, anchor='nw', fill=self.MUTE, font=font(8, True), text='WAYS THROUGH')
                 y = c.bbox(t)[3] + px(4)
-            # Leave DVORAK room once the conversation starts; RADAR always lists every way.
-            talking = self.typing or any(w == 'dvorak' for w, _ in self.chat)
-            shown = moves[:2] if talking else moves
-            y = self.numbered(c, shown, pad + px(14), y, width - px(28), px, self.body(11), self.SOFT)
-            if len(shown) < len(moves):
-                t = c.create_text(pad + px(34), y, anchor='nw', fill=self.MUTE, font=font(8, True),
-                                  text='+%d MORE ON RADAR' % (len(moves) - len(shown)))
-                y = c.bbox(t)[3] + px(4)
+            y = self.numbered(c, moves, pad + px(14), y, width - px(28), px, self.body(11), self.SOFT)
             if warn:
                 t = c.create_text(pad + px(14), y + px(3), anchor='nw', text=warn, fill=RED, width=width - px(28),
                                   font=font(9, True))
@@ -1038,7 +1028,15 @@ class Opsat:
             self.card(c, pad, top, width, bottom_card - top, px)
             c.tag_lower(c.items[-1]['id'])
             top = bottom_card + px(14)
+        return top
 
+    def draw_intel(self, c, top, pad, width, H, px, font):
+        if not self.mission_id:
+            c.create_text(pad, top, anchor='nw', text='Intel comes online in a mission.', fill=self.MUTE, font=font(10))
+            return
+        self.draw_objectives(c, self.draw_next(c, top, pad, width, H, px, font), pad, width, px, font)
+
+    def draw_dvorak(self, c, top, pad, width, H, px, font):
         # DVORAK header.
         on = self.dvorak_online
         c.create_oval(pad, top + px(5), pad + px(7), top + px(12), fill=self.GREEN if on else RED, outline='')
@@ -1101,8 +1099,7 @@ class Opsat:
             c.create_text(pad + px(12), iy + px(9), anchor='nw', fill=self.MUTE, font=font(10),
                           text='Ask DVORAK  ·  press INS' if on else 'Press INS and paste your Anthropic API key')
 
-    def draw_radar(self, c, top, pad, width, H, px, font):
-        intel = self.intel
+    def draw_objectives(self, c, top, pad, width, px, font):
         rows = self.objective_rows()
         must = [r for r in rows if r[2] in (0, 3)]
         extra = [r for r in rows if r[2] not in (0, 3) and r[1] == 0]
@@ -1135,7 +1132,11 @@ class Opsat:
             t = c.create_text(pad + px(20), y + px(2), anchor='nw', text='FAILS IF  ' + fail[0], fill=RED,
                               width=width - px(20), font=font(9, True))
             y = c.bbox(t)[3] + px(4)
-        y += px(10)
+        return y
+
+    def draw_radar(self, c, top, pad, width, H, px, font):
+        intel = self.intel
+        y = top
         if not intel:
             c.create_text(pad, y, anchor='nw', text='Radar comes online in the mission.', fill=self.MUTE, font=font(10))
             return
@@ -1160,12 +1161,6 @@ class Opsat:
                 t = c.create_text(pad, y, anchor='nw', fill=self.BLUE, font=font(9), width=width,
                                   text=' \u203a '.join(r.replace('_', ' ') for r in path))
                 y = c.bbox(t)[3] + px(6)
-            note = self.note_for(nxt)
-            if note:
-                t = c.create_text(pad, y, anchor='nw', text=note['where'], fill=self.MUTE, width=width,
-                                  font=self.body(10))
-                y = self.numbered(c, note['ways'], pad, c.bbox(t)[3] + px(5), width, px, self.body(10), self.SOFT, 3)
-                y += px(4)
         # The radar fills what is left, with the threat counts underneath.
         strip_h = px(40)
         R = max(px(60), min(width / 2, (H - px(40) - strip_h - y - px(8)) / 2))
@@ -1312,7 +1307,7 @@ class Overlay:
 
     def talk(self):
         panel = self.panel
-        panel.tab = panel.TABS.index('TERMINAL')
+        panel.tab = panel.TABS.index('DVORAK')
         panel.show_panel()
         panel.render()
         panel.start_typing()
@@ -1467,7 +1462,7 @@ class Overlay:
                     panel.chat.pop()
                 panel.chat.append(['sys', 'DVORAK error: ' + text])
                 self.say('dvorak error:', text)
-        on_terminal = panel.open and panel.TABS[panel.tab] == 'TERMINAL'
+        on_terminal = panel.open and panel.TABS[panel.tab] == 'DVORAK'
         if on_terminal and mission and not self.dvorak.online and not self.key_asked and not panel.typing:
             self.key_asked = True
             panel.chat.append(['sys', 'DVORAK: Link down, Fisher. I need an Anthropic API key to come online. '
