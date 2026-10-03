@@ -1,0 +1,509 @@
+{
+  "_about": "Stealth-only hints keyed by the game's own 3D-map room names (E3DMapSystem.MapBBs). Each room: what to do next + the stealth ways to do it. No combat or cheat routes.",
+  "missions": {
+    "01_Lighthouse": {
+      "title": "Lighthouse",
+      "rooms": {
+        "Beach": {"next": "Get off the beach into the caves.", "ways": [
+          "Night vision on. There's a natural ramp up the cliff on the far left, between the lamp post and the wooden debris. Run up it and climb the chest-high ledge.",
+          "Follow the narrow passage to the crawlspace and crawl through to the cavern."]},
+        "Cavern": {"next": "Get past the two talking guards and cross the bridge.", "ways": [
+          "Wait crouched below the last ledge until they stop talking, cross the bridge, then crouch at the start of the narrow tunnel on the right. Both guards walk right past you.",
+          "Jump from the ledge outcrop at the top of the cavern into the small cave (costs some health).",
+          "Climb up after the talk and knock out the nearer guard from behind. The other one keeps staring out to sea."]},
+        "Wine Cellar": {"next": "Get past the gunman by the generator and scan the camo crates.", "ways": [
+          "His gunfire and the generator hide your footsteps. Creep past behind him while your noise stays under the square on the sound meter.",
+          "Switch off the generator to kill the light above (he may come to look).",
+          "Knock him out from behind; he tells you where Morgenholt is.",
+          "Crate scans: the first camo crate is on the left wall, the second is around the corner of the right-hand hallway."]},
+        "Rear Dungeon": {"next": "Slip past the guard in the cells and go up the stairs.", "ways": [
+          "Wait at the cell opening until the shooter turns away, then creep to the far side and scan the crate there.",
+          "Pick the lock at the top of the stairs (never break it)."]},
+        "Ampitheatre": {"next": "Get down into the torture chamber unseen.", "ways": [
+          "Hop onto the stone guard rail of the ramp and creep along it. Drop down behind the second guard when he walks out of the chamber.",
+          "Wait by the large crate downstairs and let the guard walk past."]},
+        "Torture Dungeon": {"next": "Leave through the alcove behind the big floodlight.", "ways": [
+          "Morgenholt can't be saved; don't break stealth trying. Creep through behind the guards, keeping your noise at or below the room's background noise.",
+          "One guard sits with his back to the cell opening; the other wanders off. Go when the wanderer is gone."]},
+        "Front Courtyard": {"next": "Get past the tent guard and the lantern room.", "ways": [
+          "Hug the wall on the right and stay in the dark; skip the tent entirely.",
+          "Cut through the tent's back wall (check inside with thermal) and grab the guard from behind.",
+          "Shut off the light over the room below with your pistol's OCP jammer, then go in through the dark.",
+          "Wait in the dark corner by the door and let the patroller pass."]},
+        "Rear Courtyard": {"next": "Cross the guarded yard to the walkway.", "ways": [
+          "Night vision: there's a crawlspace in the wall behind the floodlight. Take it, then the next two going counter-clockwise, and you skip the whole guarded yard.",
+          "Scan the crate in the back-left corner of the right-hand tent, climb the pallets next to it and go through the passage past the sitting guard.",
+          "On the walkway, stay stuck to the low wall and stop where your light meter starts to rise. Move once the two guards below finish talking (one turns to face the exit about 6 seconds later)."]},
+        "Keep": {"next": "Go through the barracks and down the long corridor.", "ways": [
+          "Both guards (one asleep, one in a chair) can be bypassed. Stay in the shadow by the fire and walk through quietly.",
+          "Pick the lock to get in, and close doors behind you."]},
+        "Southwest Tower": {"next": "Use the technician's computer (Masse Kernels).", "ways": [
+          "He's glued to his screen. Creep up and use the computer right behind him.",
+          "Knock him out from behind first, then use the computer.",
+          "Scan the crate on the shelf by the entrance."]},
+        "Lookout": {"next": "Get past the two guards by the lighthouse entrance.", "ways": [
+          "They only come your way if you whistle. Creep behind the crates on the left.",
+          "When one stops at the top of the stairs on the left, grab him and hide him behind the crates; the other keeps looking out to sea.",
+          "Scan the last crate in the lamplight here."]},
+        "Lighthouse": {"next": "Find where the guerrillas' weapons came from, then kill the beacon light at the top.", "ways": [
+          "Cliff walkway guard: hide in the natural alcove near the top and let him pass.",
+          "Guard circling the base: wait for him to pass the light, then cross the bridge counter-clockwise behind him.",
+          "Arms info, 3 ways: listen to the radio operator's call, search the filing cabinet on the stairs, or interrogate the operator.",
+          "At the top, flip the light switch while the catwalk guard gazes out to sea. He walks off with a flare to check it, so slip around him."]}
+      }
+    },
+
+    "02_CargoShip": {
+      "title": "Cargo Ship",
+      "rooms": {
+        "Bow": {"next": "Get from the bow down into the ship.", "ways": [
+          "Back away left, creep along the starboard rail and take the starboard ladder down.",
+          "Jump up into the gap between the big cargo containers to skip the deck.",
+          "Wait for the patroller to climb up to the bow, then hop the railing and take the stairs behind him.",
+          "Knock out the guard who stops by the green-lit object; catch the other one at the lower door."]},
+        "Cargo Hold 1A": {"next": "Get past the sleepy sailor with the flare.", "ways": [
+          "Wait in the dark past the railing. Let him walk up the stairs below you, then hop over and drop down behind him.",
+          "Ring-airfoil him in the head from the dark."]},
+        "Cargo Hold 2A": {"next": "Climb across the crates and plant a tracker on the first small crate.", "ways": [
+          "No guards here. Squeeze back-to-wall through the tight gap; the tracker crate is just past it.",
+          "Climb the ladder at the end and take the door on your right."]},
+        "Cargo Hold 3A": {"next": "Grab the bill of lading from the top of the crate stack.", "ways": [
+          "It's the white paper on top of the stack (visible from the door). Climb the crates.",
+          "Reading it sends two guards into the corridor outside. Wait inside, right of the door, until they pass."]},
+        "MachineShop": {"next": "Get past the lathe worker and into the vent.", "ways": [
+          "Shut off the workshop light with the OCP jammer, hop over the table saw and crawl into the corner vent.",
+          "Hit the light switch by the door for darkness.",
+          "Knock out the worker while he's busy at the saw."]},
+        "Bilge Pump Room": {"next": "Start the bilge pump.", "ways": [
+          "From the vent, jump onto the big pipe against the wall and stay in its shadow. When the worker walks away, jam the swinging light, drop down and hit the pump.",
+          "The machines hide your noise, so you can move a bit faster in here.",
+          "Jump over the catwalk railing rather than using the ladder.",
+          "Knock out the catwalk guard first, then the worker at the controls."]},
+        "Hallway": {"next": "Get past the two guards in the corridor.", "ways": [
+          "Drop through the lifted deck plate and crawl under the floor beneath them, coming up past them.",
+          "One stops to smoke at the west end and the other patrols. Time it and slip by."]},
+        "Engine Room": {"next": "Cross the dark engine room (gas leak) to the upper decks.", "ways": [
+          "Gas leak: never fire a bullet in here. The OCP jammer is safe.",
+          "Night vision on. Creep along the railing to the right, go round the first guard counter-clockwise, climb the pipe to the 2nd level and jump to the railing.",
+          "Jam the hanging light before taking the stairs. If the guard upstairs notices, wait at the top until he calms down.",
+          "Knock out the first guard near the entrance, then the worker on his rounds."]},
+        "Crow Quarters": {"next": "Get through the crew quarters and up the stairs.", "ways": [
+          "Stand by the vertical pipe. When the patroller passes the door, slip in before it closes (an open hatch doesn't bother him).",
+          "Wait in the shadow at the bottom of the stairs until he heads away, then climb both flights quickly but quietly.",
+          "Tracker crate: behind the sliding hatch in the second half of the room."]},
+        "Office&Infirmary": {"next": "Get Lacerda's transit ledger from the computer.", "ways": [
+          "Crawl through the vent near the entrance that loops around the two men, then hack the computer remotely with your EEV.",
+          "Knock out the man at the maps, then the one at the computer, and use it by hand.",
+          "The room on the left has a medkit."]},
+        "OutSide Stairs": {"next": "Plant the tracker under the stairs and head up.", "ways": [
+          "The crate is under the lowest outdoor stairway.",
+          "Keep your noise low going up; the deck patroller can hear running."]},
+        "Mess Hall": {"next": "Get past the two crewmen (kitchen crate tracker).", "ways": [
+          "Wait behind the end of the table until your light meter is zero. Go when the patroller walks into the small side room.",
+          "Switch off the corridor lights to draw the patroller away.",
+          "The kitchen crate guard always has his back to you."]},
+        "Office Quarters": {"next": "Find which cabin Lacerda is in, then get him.", "ways": [
+          "Interrogate the captain, or check the ship's register on the main computer (the captain won't talk once you've done that).",
+          "Lacerda: wait in the captain's mess by the sink. He goes into the pantry for a drink with his back to you. Grab him and drag him into the corridor, out of his bodyguards' sight.",
+          "Listen in on the captain's cabin first to learn Lacerda's Panama contact."]},
+        "PilotHouse": {"next": "Get the captain or the comm shack computer without being seen.", "ways": [
+          "Comm shack: open the hatch and jam the first big screen left of the operator. Slip into the dark by the chair, then jam the second screen. He gets up to check it while you use the target computer.",
+          "Creep in behind the captain while he faces the windows."]},
+        "TopSide Cargo": {"next": "Tag the crate up top and head aft.", "ways": [
+          "Watch the upper patroller with thermal; he can see down onto these stairs.",
+          "Leave the hatches the way you found them."]},
+        "BackSide Cargo": {"next": "Reach the boat at the stern.", "ways": [
+          "Don't slide down the ladder near the two guards; the thud alerts them.",
+          "Hop the railing behind the big tarp-covered crates, circle them to the last tracker, then climb the short ladder.",
+          "Jump over the lit walkway and drop onto the stern deck."]}
+      }
+    },
+
+    "03_Bank": {
+      "title": "Bank",
+      "rooms": {
+        "Front_Garden": {"next": "Get to the side of the bank unseen.", "ways": [
+          "Go left over the grass, flip the exterior light switch off (the guards react calmly), then cross in front of the bank in the dark.",
+          "Stay in the shadows around the fountain; you can ignore the guards completely.",
+          "Knock out the one who stops by the lamp post."]},
+        "Bank_Side": {"next": "Get onto the roof.", "ways": [
+          "There's a wall camera up high. Run along the wall, jump onto the ladder and climb.",
+          "Or jam the camera with your pistol's OCP first."]},
+        "Roof": {"next": "Open the skylight windows and rope down.", "ways": [
+          "Stay on the right side of the roof. Pick the shed lock (don't break it), flip the switch and close the door behind you.",
+          "Climb down the rope that drops from the skylight."]},
+        "Main_Reception": {"next": "Get past the teller-area lasers and into the bank.", "ways": [
+          "Drop to the floor about 6 ft up the rope and hack the nearby computer with your EEV to switch the lasers off.",
+          "Or simply step around the beams.",
+          "Front-door route: jam the vestibule camera and the lobby light. Zapping the lobby camera spooks the booth guard, though, and he locks the teller doors."]},
+        "Lobby": {"next": "Plant the first fake email and go deeper.", "ways": [
+          "Hack the computer under the seated guard's desk remotely with the EEV.",
+          "Sleeping guard by the retinal scanner: hack the scanner, or grab him standing (not crouched) and make him scan his eye."]},
+        "East_Hallway": {"next": "Get past the security booth and up the laser stairwell.", "ways": [
+          "Don't walk into the booth. Hack the computer on top of the lockers remotely (it gives code 2306).",
+          "Shoot or jam the light near the camera to stay dark.",
+          "Stairwell guard: follow right behind him; the lasers switch off near guards.",
+          "Knock him out and leave him by the laser grid. Those 3 lasers stay off for good."]},
+        "2nd_Floor_Reception": {"next": "Get past the lobby lasers and the two guards.", "ways": [
+          "Follow close behind the patrolling guard; lasers near him switch off.",
+          "Hop over the reception desk, climb onto the wall molding past the last laser, then drop.",
+          "Split-jump in the short dark hallway and wait above until both guards pass."]},
+        "Kitchen_Area": {"next": "Get past the camera room.", "ways": [
+          "The camera is on the wall left of the doorway. Use the dark lane, the drapes, or the far-left doorway as cover.",
+          "If you're quick, run the hallway, turn right at the plastic sheeting and roll past the opening."]},
+        "Main_Security_Office": {"next": "Press the first vault authorization pad.", "ways": [
+          "Wait for the guard to open the security door and follow him in.",
+          "The server terminal can switch off all cameras and delete the archives (bonus).",
+          "The servers' hum covers your noise. Whistle the technicians into the dark one at a time."]},
+        "Security_Booth": {"next": "Avoid the two booth guards.", "ways": [
+          "Hack their computer from outside with the EEV. Don't go in."]},
+        "North_Hallway": {"next": "Get through the keypad door to the president's office.", "ways": [
+          "Hack the keypad, or use the code from emails (2306 / 3624).",
+          "Jam the camera above the door before going in."]},
+        "President_Office": {"next": "Press the second vault pad and plant the email.", "ways": [
+          "The pad is in the back right corner next to the bookshelf.",
+          "Hack the desk computer for the email."]},
+        "West_Hallway": {"next": "Get the treasurer's door code.", "ways": [
+          "The repairman says the new code out loud: 8645.",
+          "If he's been knocked out, a crawlspace in the sitting area leads into the treasurer's office."]},
+        "Treasurer_Office": {"next": "Press the third vault pad.", "ways": [
+          "Flip the wall switch. The filing cabinet has the suspicious records.",
+          "Leave through the vent if a guard is coming."]},
+        "Back_Garden": {"next": "Get past the garden patroller to the treasurer's office.", "ways": [
+          "If he's walking away, hang off the balcony and drop. Hide in the corner of the raised planter and go up the stairs when he looks away.",
+          "Use the floor-level office vent. Hug the wall; the camera above it is still active."]},
+        "Small_Vault": {"next": "Get the safecracking kit from deposit box 1024.", "ways": [
+          "Box 1024 holds the charges and the telemetric lock pick."]},
+        "The_Vault": {"next": "Open the vault, take the bonds, and get out without tripping the hidden laser (costs 2 alarms).", "ways": [
+          "Lock pick: after each pin, wait until all the device's lights flash green. Mistakes just reset it.",
+          "Jam the security dome right of the last computer before using it.",
+          "Exit laser: thermal shows it switching on and off. Cross while it's off, or jam an emitter with the OCP."]},
+        "Fire_Escape": {"next": "Head back to the front wall.", "ways": [
+          "This elevator is one-way and drops you outside.",
+          "At the fountain, wait in the shadow of its low wall until both guards walk away, then slip through to the gate."]},
+        "Main_Security_Vent": {"next": "Crawl through.", "ways": ["Check the room below with thermal before dropping."]},
+        "Bathroom_Vent": {"next": "Crawl through.", "ways": ["Check the room below with thermal before dropping."]},
+        "Treasurer_Vent": {"next": "Crawl into the treasurer's office.", "ways": ["Drop in when the office is empty."]},
+        "Bathroom": {"next": "Keep moving; there's a medkit around here.", "ways": ["Use the vent to bypass the hallway."]}
+      }
+    },
+
+    "04_Penthouse": {
+      "title": "Penthouse (no kills until the penthouse)",
+      "rooms": {
+        "Alley": {"next": "Get into the garage without killing anyone (National Guard).", "ways": [
+          "Night vision. Climb the fire-escape ladder on the right, stopping short of the first platform until the guard walks past (he looks up as he passes).",
+          "From the boxes, grab the building ledge, shimmy left to the drainpipe and slide down.",
+          "Shimmy above the cable, drop onto it and ride it down onto the truck roof.",
+          "Knock out the guards from behind. Never kill here."]},
+        "Corridor": {"next": "Get into the elevator past the electrician.", "ways": [
+          "Slide along the left wall. He steps away from the elevator, giving you time to get in.",
+          "Climb out the roof hatch and ride up on top of the car. Drop back in when it stops.",
+          "When the doors open, go straight into the shadow on the left; the patroller comes to check the car."]},
+        "Helipad Storage": {"next": "Go up the stairs to the helipad.", "ways": [
+          "Let the patroller pass by the elevator, then creep around the first row of shelves."]},
+        "Helipad": {"next": "Reach the zip-line by the neon sign.", "ways": [
+          "Hop over both big pipes, roll into the dark structure by the helipad ramp, and wait back-to-wall until the two guards finish talking.",
+          "When the roof guard turns back, climb the ladder by the neon sign and zip across.",
+          "If they hear you on the sign walkway, drop and shimmy under it to the cable."]},
+        "Balcony": {"next": "Get inside past the flashlight guard.", "ways": [
+          "When he turns away and switches on his flashlight, hop the railing and creep past, drifting to the left wall into the dark hallway.",
+          "Follow him to the doorway, stick to the plywood, and let him pass back.",
+          "Hang off the railing as he passes, shimmy level with the entrance, and climb up when clear.",
+          "Knock him out; he tells you who the mercs work for."]},
+        "Construction Floor": {"next": "Get past the elevator repairman and the guard.", "ways": [
+          "Creep past the electrician's back into the dark hallway, behind the plastic sheet and the cabinet.",
+          "Jam the light, then hide by the table.",
+          "The architect's desk computer has the plans (bonus); only 3 hacking tries."]},
+        "Penthouse Elevator": {"next": "Ride up into Zherkezhi's main corridor.", "ways": [
+          "Once repaired, climb through the car's roof hatch to reach the penthouse corridor."]},
+        "Fire Escape": {"next": "Get past the IR camera on the stairs.", "ways": [
+          "Tap its cable (objective). Night vision shows its cone; go up when it points away.",
+          "Or jam it with the OCP."]},
+        "Guest Room": {"next": "Get through the music room.", "ways": [
+          "Jam the room light and flip the switch off, walk behind the seated guard, and leave the doors open.",
+          "Use the vent by the veranda doors to get into the kitchen."]},
+        "Kitchen": {"next": "Reach the living room.", "ways": [
+          "Watch where the patrollers are from the island counter, then take the short dark hallway.",
+          "Climb the counter, stick to the wall, slide to the fern, and cross to the bathroom vent (also the exit later)."]},
+        "Living Room": {"next": "Tap the cameras and go upstairs.", "ways": [
+          "The TV guard only reacts to noise. Walk between the wall and the hanging carpet.",
+          "Night vision shows each camera's cone; jam a camera before tapping it."]},
+        "Zherkezhi's Room": {"next": "Tap the bedroom camera and enter the panic room.", "ways": [
+          "Night vision: there's an IR beam in the lounge. Run behind the glass partition on the left when it's safe.",
+          "Close all doors on your way back."]},
+        "Panic Room": {"next": "Use Zherkezhi's computer (server objective).", "ways": [
+          "Just walk in and use it. No guards inside."]},
+        "Greenhouse": {"next": "Tap the greenhouse camera.", "ways": [
+          "Wait for the guard to come out, then tap the camera above the door (easier with the door closed).",
+          "Knock him out as he leaves; he names the protection boss."]},
+        "RoofTop": {"next": "Get across the shed roof into the next building.", "ways": [
+          "Stay stuck to the building wall (he can't see you there). When he turns from the window, hop in.",
+          "Make no noise: the man on the toilet must stay seated.",
+          "Watch for the wall mine in the bathroom."]},
+        "Old Building": {"next": "Find Dvorak.", "ways": [
+          "Hack the door. Before the old man's room, throw a smoke grenade in so he never sees you (seen = lower stealth score)."]},
+        "Dvorak Server": {"next": "Run the machine and take the printout.", "ways": [
+          "Start the server, then flip each tube's switch as it glows hot. It's easier without night vision. Save first.",
+          "Exit: back through the kitchen's bathroom vent into the elevator shaft."]}
+      }
+    },
+
+    "05_Displace01": {
+      "title": "Displace (no kills)",
+      "rooms": {
+        "Rooftop": {"next": "Open the fan vent and rappel down.", "ways": [
+          "Walk on the quieter roof tiles beside the vent. Climb into the fence cage when the talker leaves, flip the switch, and climb back out.",
+          "Wait on the vent for the slow patroller to go back down, then pick the trapdoor lock and rappel.",
+          "Knock out the fence guard and the patroller (no kills)."]},
+        "Meeting Room": {"next": "Get the server algorithm from the briefcase.", "ways": [
+          "From inside the vent, scan and hack the tiny briefcase with your EEV before the execs leave (follow the ceiling light's cable down to it). It also gives code 8136.",
+          "Or scan it later while the exec carries it."]},
+        "Operations": {"next": "Tracer program into the top-center computer.", "ways": [
+          "Hack the 2nd-row computer remotely with the EEV from the top-center one, then use the top-center one by hand.",
+          "Jam the smart-glass windows with the OCP to switch them clear or opaque."]},
+        "Lobby": {"next": "Get through the security door.", "ways": [
+          "Wait by the keypad until the salesman clears the glass, then enter 8136.",
+          "Bait the security guard over the railing, grab him, and use him on the retinal scanner.",
+          "After the power comes back: follow the patroller and jam the camera above the elevator."]},
+        "Training Area": {"next": "Tracer into the gym computer.", "ways": [
+          "Hop the shadowed railing, shimmy along the floor edge to the far end, climb up, and use the computer from the corner.",
+          "Remote hacking works, but the laptop user may notice."]},
+        "R&D Labs": {"next": "Get through the laser corridor.", "ways": [
+          "Thermal shows the beams. Jam the steady (non-flickering) ones.",
+          "Carry an unconscious guard through; lasers near him switch off.",
+          "Time your crossing on the flickering ones."]},
+        "R&D Vent": {"next": "Drop into the central server room.", "ways": ["Leave the turret alone; it's already off."]},
+        "Central Server": {"next": "Use the algorithm on the central server.", "ways": [
+          "Rappel down and use it. Afterwards the power comes back, so head straight for the hallway while it's still dark."]},
+        "VIP Floor": {"next": "Find Nedich's office and his computer.", "ways": [
+          "Overhear the two guards at the corner for codes 2346 (offices) and 2609 (Nedich). Stay at the corner until the code is said.",
+          "Nedich's real name (bonus): don't flip the hallway lights. Laser-mic the second room's glass with the EEV.",
+          "Camera by the automatic doors: jam it, or pass when it turns away."]},
+        "Fire Escape": {"next": "Exit up the fire stairs.", "ways": [
+          "Code 3485 (from Nedich's PC). Check which way the wall camera is swinging and go the other way into the dark.",
+          "No code: wait for the patroller to open the security door and keep it open behind him."]}
+      }
+    },
+
+    "06_Hokkaido": {
+      "title": "Hokkaido",
+      "rooms": {
+        "Creek": {"next": "Get past the sharp-eyed ledge guard.", "ways": [
+          "Save first. Go along the edge to the big rock, stick to it below him, and climb up when he turns away.",
+          "Daring route: climb the rock steps behind him, drop onto the narrow ledge below, and climb up when he turns.",
+          "He sometimes stretches and glances down. Count to 4 after he stops before moving.",
+          "Grab him from the left while he's looking away (funny interrogation)."]},
+        "Exterior A": {"next": "Reach the first house.", "ways": [
+          "Hug the right side and jump onto the small ledge. Keep your noise low; the ground is quiet."]},
+        "FirstHouse": {"next": "Get past the candle guard.", "ways": [
+          "Roll out of the door into the dark while he lights his candle.",
+          "Blow out the candle and wait for him to come back past you.",
+          "Use the darker window instead of the front door."]},
+        "Exterior B": {"next": "Cross the car yard to the next house.", "ways": [
+          "Go along the fence to the deck opposite the cars, climb up, and enter through the window. Then take the floor-level vent.",
+          "Scan the license plates with the EEV for the Nedich objective."]},
+        "FourthHouse": {"next": "Grab the microphones and get past the bug-hunting guards.", "ways": [
+          "EMF vision shows the bugs (by phones, lanterns, behind wall hangings, under paintings).",
+          "Wait behind the low divider until the two guards turn away from each other, then take the bug.",
+          "Bath guard: never leave bodies near the pool (they drown and count as kills)."]},
+        "Kitchen": {"next": "Cross the courtyard with the lantern.", "ways": [
+          "Flip the kitchen light switch off, slide the exit door open and leave it open (no one notices).",
+          "Drop off the deck, go along the fence, and cross the shadow lane when all three are facing away.",
+          "Wait for the two guards to start talking on the deck, then go.",
+          "Last resort: jam the lantern."]},
+        "Exterior C": {"next": "Cross the zen courtyard.", "ways": [
+          "Take out or avoid the courtyard guard first, then come up behind the porch guard using the shadows on the left stairs."]},
+        "FifthHouse": {"next": "Eliminate Nedich (and get the microphones).", "ways": [
+          "Use the crawlspace to the right of the forbidden door. Leave from the back when the guard above drops his change.",
+          "Wait in room 2 by the fern. When his men leave, approach Nedich along the wall; the last guard must be out in the hallway, walking away.",
+          "Exit through the wall vent beside the Buddha statue."]},
+        "Ending": {"next": "Watch the meeting, then return to the lake.", "ways": [
+          "Hop into the bamboo garden instead of using the lit stairs; turn off the light on the left side.",
+          "Use the crawlspace in the boxed anteroom to watch the meeting.",
+          "Way back: wait at the gate for the helicopter to pass, then use the doorway you left open."]},
+        "vent_kitchen": {"next": "Crawl through.", "ways": ["Check the room ahead with thermal before leaving the vent."]},
+        "vent_coude": {"next": "Crawl through.", "ways": ["Check the room ahead with thermal before leaving the vent."]}
+      }
+    },
+
+    "07_Battery": {
+      "title": "Battery",
+      "rooms": {
+        "Garage Ventilation": {"next": "Get out of the lit shaft fast.", "ways": ["Drop down and get into the dark before the two guards look up."]},
+        "Garage": {"next": "Leave the garage without the camera or keypad.", "ways": [
+          "Go to the front of the truck and drop into the trench below. Follow it to the ladder and trapdoor; you skip the camera and keypad.",
+          "Or jam the camera at the SE door and enter code 1879.",
+          "Knock out one guard while the other is busy (he knows code 1879)."]},
+        "Office": {"next": "Get the shipping log from the soldier's computer.", "ways": [
+          "Wait for him to leave, or slip out behind him hugging the right side of the door.",
+          "Hack the glass office's monitor from the doorway with the EEV."]},
+        "Bedroom": {"next": "Pass through quietly.", "ways": ["Check the next door with the optic cable; if the guard is to the right, sneak in behind him."]},
+        "Warehouse": {"next": "Cross under the camera to the security room.", "ways": [
+          "Wait until the camera turns away, then go along the shelves on the right.",
+          "Pick the lock of the door by the railing and hack the computer from the corner with the EEV."]},
+        "Loading Bay": {"next": "Get past the missile and over the bulkhead.", "ways": [
+          "Hug the truck to the front. Fix the fuse box when the guard walks off, then climb the cab to the overhead rail and go hand-over-hand (legs up near the camera)."]},
+        "Missile Control": {"next": "Get to the elevator past the two guards.", "ways": [
+          "Whistle a guard into the shadow by the elevator and grab him when he turns.",
+          "Stay in the dark under the elevator service trapdoor until the patroller passes."]},
+        "Elevator Shaft": {"next": "Patch the panel and ride up.", "ways": ["Patch it, ride up and get into the vent straight away."]},
+        "Command Center": {"next": "Learn if the launch was intentional; get the log on the main console.", "ways": [
+          "Follow behind the patroller and peel off at the target computer.",
+          "If the officer is at the control panel, save first."]},
+        "West Missile Bay": {"next": "Rig the payload and head for the launcher.", "ways": ["Wait until the technician is turned away."]},
+        "West Battery": {"next": "Tap the launcher BIOS.", "ways": [
+          "Fix the control-room circuit first so the casing opens.",
+          "Jam the launcher camera or use a smoke grenade."]},
+        "West Battery Subfloor": {"next": "Get to the console and the repair box.", "ways": [
+          "Whistle once or twice from the niche by the turret. Both men walk over to check, and you slip around them.",
+          "A pitch-dark lane from the stairs to the wall can't be seen into."]},
+        "East Missile Bay": {"next": "Open the blast door (starts a 3:00 timer, save first).", "ways": [
+          "Walk on the missile fins and frame along the wall. Patch the panel when the patroller walks away, then roll under the door."]},
+        "East Battery": {"next": "Get the abort codes below the launcher.", "ways": ["Watch the camera; go down the nearest stairs."]},
+        "East Battery Subfloor": {"next": "Hack the abort codes (by hand only), then run back.", "ways": [
+          "Take the far exit and deal with the binoculars guard first.",
+          "Then back to the Command Center (about 45 seconds of running)."]}
+      }
+    },
+
+    "08_SeoulOne": {
+      "title": "Seoul 1",
+      "rooms": {
+        "Apartment": {"next": "Get down to the street.", "ways": [
+          "In the kitchenette, step off the blown-out wall facing just left of the red sign. You slide down the slab unhurt.",
+          "Or rappel down."]},
+        "Street": {"next": "Interrogate a Special Forces agent.", "ways": [
+          "Disarm the wall mine at the barrier (approach slowly).",
+          "Cut the loudspeaker cable (EMF vision shows it).",
+          "Wait by the camouflage net. Grab the one who comes out and drag him into the dark alley. Don't knock out both before interrogating."]},
+        "Market_Alleys": {"next": "Get down to the market.", "ways": [
+          "Climb the pipe at the far right end of the alley to the fire escape.",
+          "Cut the second speaker cable near the pipe."]},
+        "Market_Place": {"next": "Tap the command truck, then climb to the server building.", "ways": [
+          "Wait at the truck's rear corner. Go in when the man inside steps out and turns right, then leave between him and the boxes.",
+          "The ladder by the dumpster has a wall mine. Disarm it, then use the crawlspace."]},
+        "NDT_Building": {"next": "Grab the data drives, then reach the roof.", "ways": [
+          "After the doors are blown, squeeze between the wall and the server and slip out behind the two soldiers.",
+          "Upstairs, hide in the bathroom gap between the wall and the stall until the elevator guards pass, then slip into the elevator behind the second one."]},
+        "NDT_Vent": {"next": "Crawl to the server room.", "ways": ["Drop down only when the room is clear."]}
+      }
+    },
+
+    "09_SeoulTwo": {
+      "title": "Seoul 2",
+      "rooms": {
+        "NDT Roof": {"next": "Head east across the rooftops.", "ways": [
+          "Night vision makes the UAV's red beam visible. Move only when it's flying away.",
+          "Hack the radar receiver from under the walkway with the EEV."]},
+        "Roof A": {"next": "Cross to the next building.", "ways": [
+          "Zip-line from the fence, climb over, and run down the stairs.",
+          "Hang from the pipe at the edge to bypass the guards below."]},
+        "Roof B": {"next": "Get inside past the balcony soldier.", "ways": [
+          "Hack the radar receiver on the far balcony remotely.",
+          "Follow the soldier in through the door he opens, using the dark lane."]},
+        "Office Interior": {"next": "Work your way down through the broken floors.", "ways": ["Hang and drop through the holes in the floor; avoid debris where you drop."]},
+        "Destructed Restrooms": {"next": "Drop to the floor below.", "ways": ["Hack the receiver from the back wall."]},
+        "Apartment Interior": {"next": "Down to the restaurant.", "ways": ["Wait for the two soldiers to leave the dud bomb."]},
+        "Resteraunt": {"next": "Get the UAV data from the laptop.", "ways": [
+          "Noisy tiles: slowest creep only.",
+          "Hack the laptop through the serving hatch, then use the vent and the overhead pipe."]},
+        "Back Alley": {"next": "Cross toward the tank street.", "ways": ["Climb the chain-link fence before the soldier sees you."]},
+        "Boulevard": {"next": "Get past the tank and reach the ladder.", "ways": [
+          "Move when the turret turns away and the soldiers reload. The tank can't hit you up close, so hug its side.",
+          "Use the very dark lane across the street."]},
+        "Apartment Interior Two": {"next": "Down to the balcony over the market.", "ways": ["Hack the receiver at the top of the ladder."]},
+        "Market Street": {"next": "Tap the command truck, then reach the alley.", "ways": [
+          "Jam the big blue and white neon sign, then loop around to the truck ramp.",
+          "If the UAV blocks the alley, hide in the dark niche past the umbrella table."]},
+        "Back Alley Market": {"next": "Get to the crash site.", "ways": ["Narrow dark alley; night vision on."]},
+        "E6-AB Crash Site": {"next": "Designate the wreckage from the top of the scaffolding.", "ways": [
+          "Cross only during the long (~12 s) dark spells of the flickering lamp, while the turret swings away.",
+          "Climb one scaffolding level at a time when the patroller's back is turned and the lamp is off.",
+          "Pilots (bonus): carry them into the narrow dark alley during the dark spells."]}
+      }
+    },
+
+    "10_Bathhouse": {
+      "title": "Bathhouse",
+      "rooms": {
+        "Street Sewer": {"next": "Tap the payphone and get into the sewer.", "ways": [
+          "The payphone panel is in the shadows. Patch it while the electrician is away.",
+          "Drop into the manhole when the electrician walks to his phone panel."]},
+        "Laundry": {"next": "Get past the two mercs.", "ways": [
+          "The furnace covers your noise. Don't break the light (it makes the seated man start patrolling).",
+          "Go behind the dumpsters and the hanging sheets to the dark exit."]},
+        "Restaurant": {"next": "Head for the reception.", "ways": ["Follow the patroller's back and stick to the dark walls."]},
+        "Reception": {"next": "Get to the 2nd floor offices.", "ways": [
+          "The front-desk computer switches off the hallway cameras.",
+          "Wait until the two lobby guards are on the far sides, then slip through."]},
+        "Entrance": {"next": "Climb to the 2nd floor from outside.", "ways": [
+          "Climb the awnings, jump to the wall, grab the sill, and shimmy to the open window.",
+          "Or climb the pole across the street and zip along the cable to the window."]},
+        "Private Rooms": {"next": "Get into the owner's office (files + phone tap).", "ways": [
+          "Code 3650 (from the housekeeper). Or hack it and leave the door open; the guard reacts more calmly.",
+          "The office vent leads to the room where you learn who gave the orders."]},
+        "Spy Room": {"next": "Learn who gave the I-SDF team their orders.", "ways": ["Talk to either agent."]},
+        "Lockers": {"next": "Get past the locker room patroller.", "ways": [
+          "Follow him around, staying behind lockers (the mirror can give you away).",
+          "Climb on top of the lockers.",
+          "Bash the toilet stall door on the guard inside."]},
+        "Pool": {"next": "Cross the empty pool (phone tap by the exit crates).", "ways": [
+          "Cut through the cloth and sneak along the north wall.",
+          "Trapdoors in the empty pools connect underneath."]},
+        "Small Bath": {"next": "Cross the dry bath.", "ways": ["The overhead light keeps cutting out; time your moves with it."]},
+        "Main Bath": {"next": "Cross the warm and steam baths.", "ways": [
+          "Turn the steam valves for cover.",
+          "Go over the pools and along the back wall, away from the turret.",
+          "Split-jump in the corridor to let a patroller pass."]},
+        "Private Baths": {"next": "Reach the meeting vent (phone tap behind the front desk).", "ways": [
+          "Take the vent in the pond room. Inside it, hack Shetland's computer with the EEV (bonus).",
+          "Don't let bodies fall into the pond."]},
+        "Showers": {"next": "Get past the three guards with night/thermal vision.", "ways": [
+          "Throw one smoke grenade high onto the middle of the far brown wall panels, then creep behind the low divider. Save first; the throw takes practice.",
+          "Two smokes: one at the wall panel right of the far-left guard, one at the orange floor grate on the far right.",
+          "Shoot out the SW light; they come to check it."]},
+        "Furnace": {"next": "Disarm the three bombs.", "ways": [
+          "Pick the lock (the guards end up in better spots than if you break it).",
+          "Put sticky cameras on the walls and use their noise to pull the guards back toward the entrance between bombs.",
+          "Save during each disarm."]},
+        "Roof": {"next": "Follow Shetland up the ladder.", "ways": ["The laser shuts off once all three bombs are disarmed."]}
+      }
+    },
+
+    "11_KokuboSosho": {
+      "title": "Kokubo Sosho (no kills)",
+      "rooms": {
+        "Outside_Approach": {"next": "Get into the building.", "ways": [
+          "Flip the big door switch, jam the red light, cross to the other wall, and wait in the dark while the two guards come to check.",
+          "Use the overhead pipes as cover from the UAV, or take the crawlspace in the south wall."]},
+        "Main_Lobby": {"next": "Head up toward the hostages.", "ways": [
+          "Climb the pipe to the janitor's office, jump the wall, grab the overhead pipe, and go hand-over-hand past the wet-floor sign.",
+          "Front-desk computer: server room code 1945."]},
+        "2nd_Floor_Hall": {"next": "Reach the press room.", "ways": ["The stairway guard stops at the top of the stairs; wait for him to turn."]},
+        "Press_Room": {"next": "Talk to the hostages.", "ways": [
+          "Go round through the ferns while the guard faces away. Talk to them and leave the way you came."]},
+        "Lobby_Vent": {"next": "Crawl through.", "ways": ["Drop down along the shelves into the dark."]},
+        "Toilet_Vent": {"next": "Crawl through.", "ways": ["One stall is occupied; bash its door to knock him out."]},
+        "Basement_Area": {"next": "Get down the escalator and through the security door.", "ways": [
+          "The fusebox near the entrance switches off the escalator and its lights.",
+          "Or wait in the 2nd dark spot on the down side, walking up against the escalator to stay in place, until the guards pass.",
+          "Jam the 360-degree domes. The security door's keypad is very fast; save first and back out before the red zone."]},
+        "Central_Servers": {"next": "Open the War Room from the server console.", "ways": [
+          "Night vision shows the two rotating IR domes. Follow behind their rotation to the console."]},
+        "War_Room": {"next": "Record the meeting, then hack the general's laptop.", "ways": [
+          "Jam the dome, climb into the duct gap above the wall, and use the vent. Hack the laptop with the EEV from there."]},
+        "Rafter_Vent": {"next": "Listen in.", "ways": ["Back out once Otomo finishes."]},
+        "ISDF_Elevator": {"next": "Drop down the shaft.", "ways": ["Drop and catch each ledge right below you; don't stay in the lights."]},
+        "ISDF_Underground_Access": {"next": "Get past the mine-laying commandos (3:00 timer, save first).", "ways": [
+          "Go along the outer wall. They never patrol the mined south side."]},
+        "ISDF_Tunnel": {"next": "Through the tunnel.", "ways": ["Step around the green laser beams."]},
+        "ISDF_Command": {"next": "Destroy Otomo's servers.", "ways": [
+          "Jump over the side railing and move behind the big red holomap to the computer.",
+          "Hack it before destroying it (bonus)."]},
+        "ISDF_Office": {"next": "Reach Otomo.", "ways": ["Use the emergency hatch around the corner and crawl through."]},
+        "Passage": {"next": "Keep going.", "ways": ["Stay in the dark and keep your noise low."]}
+      }
+    }
+  }
+}

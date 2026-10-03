@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+overlay.log
+# Third-party mods are fetched by the installer from their official releases
+mods/*.zip
+mods/*.dll

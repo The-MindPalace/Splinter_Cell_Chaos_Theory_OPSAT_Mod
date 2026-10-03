@@ -1,0 +1,104 @@
+{
+  "_about": "Mission rules for OPSAT STATUS. Every fail condition is taken from the game's own localization (System/dynamic-pc.umd: Lambert lines and objective texts). 'fail' = mission over. 'penalty' = mission continues but objectives are cancelled or rating drops.",
+  "general": [
+    "Primary objectives must be done to finish. Secondary ones carry over to a later mission if failed. Opportunity ones are optional (rating only).",
+    "Alarms: stage 1-3 make enemies armor up; stage 4 = general alarm (fight your way out). Failed hacks and cameras sound alarms.",
+    "Killing, alarms and detection all lower the Mission Rating."
+  ],
+  "missions": {
+    "01_lighthouse": {
+      "fail": [],
+      "penalty": [],
+      "notes": [
+        "The guerillas have no alarm system on site."
+      ]
+    },
+    "02_cargoship": {
+      "fail": [],
+      "penalty": [
+        "The ship has a central alarm system - too many alarms and the crew hunts you."
+      ],
+      "notes": [
+        "The crew are armed guerillas, not civilians."
+      ]
+    },
+    "03_bank": {
+      "fail": [],
+      "penalty": [
+        "Destroying a computer you need for the fake emails aborts your opportunity objectives.",
+        "Alarm stage 4 = general alarm: the Panamanian Army comes in; finish primaries and get out."
+      ],
+      "notes": [
+        "It is a robbery that must look like an inside job - stay ghost."
+      ]
+    },
+    "04_penthouse": {
+      "fail": [],
+      "penalty": [
+        "Two civilians killed = additional objectives cancelled."
+      ],
+      "notes": [
+        "The National Guard is on our side - don't kill any of them."
+      ]
+    },
+    "05_displace01": {
+      "fail": [
+        "Kill anyone = mission over (Lambert pulls the plug)."
+      ],
+      "penalty": [],
+      "notes": [
+        "Recon mission: knock out, never kill."
+      ]
+    },
+    "06_hokkaido": {
+      "fail": [],
+      "penalty": [
+        "Two civilians killed = only primaries remain."
+      ],
+      "notes": [
+        "Civilians are on site."
+      ]
+    },
+    "07_battery": {
+      "fail": [
+        "The missile must be aborted."
+      ],
+      "penalty": [
+        "Alarms push the base to full alert - you are on the edge of World War Three."
+      ],
+      "notes": []
+    },
+    "08_seoulone": {
+      "fail": [
+        "Killing the men you must interrogate = mission over. Talk to them first."
+      ],
+      "penalty": [],
+      "notes": []
+    },
+    "09_seoultwo": {
+      "fail": [],
+      "penalty": [
+        "Civilian kills are tracked - two and Lambert cancels extras."
+      ],
+      "notes": []
+    },
+    "10_bathhouse": {
+      "fail": [],
+      "penalty": [
+        "Two civilians killed = all objectives except primaries aborted."
+      ],
+      "notes": [
+        "Semi-public place: civilians in the baths, Shetland's men everywhere."
+      ]
+    },
+    "11_kokubososho": {
+      "fail": [
+        "Any fatality = mission over (a dead Japanese soldier risks World War Three)."
+      ],
+      "penalty": [],
+      "notes": [
+        "No enemy means no kills. Knock out only, and get downed officers medical attention in time."
+      ]
+    }
+  }
+}

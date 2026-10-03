@@ -1,0 +1,30 @@
+Mods for Splinter Cell: Chaos Theory (Steam) used with OPSAT
+==============================================================
+
+INSTALLED BY Install OPSAT.cmd
+------------------------------
+SplinterCellChaosTheory.WidescreenFix.zip  (ThirteenAG, bundled here; 14 MB)
+  Source: https://github.com/ThirteenAG/WidescreenFixesPack/releases/tag/scct
+  Contains: Ultimate ASI Loader (msacm32/msvfw32/dinput8), the Widescreen Fix .asi, DSOAL + OpenAL Soft
+  (dsound.dll, dsoal-aldrv.dll, alsoft.ini - restores EAX 3D audio), Xidi (controller support).
+  Extract into the game folder (it has a System\ folder inside).
+  Settings OPSAT needs (System\scripts\SplinterCellChaosTheory.WidescreenFix.ini):
+    ForceWindowedMode = 1, ForceWindowStyle = 1 (borderless), UsePrimaryMonitor = 1, DoNotNotifyOnTaskSwitch = 1
+  SplinterCellChaosTheory.WidescreenFix.configured.ini here is a copy of the working config.
+
+Windows setting (installer does it): Settings > Display > Graphics > splintercell3.exe = High performance
+  (registry HKCU\Software\Microsoft\DirectX\UserGpuPreferences, "GpuPreference=2;").
+  Without it a laptop runs the game on the Intel chip and the game drops to 1024x768 low (blurry).
+
+Game graphics (C:\ProgramData\Ubisoft\Tom Clancy's Splinter Cell Chaos Theory\SplinterCell3.ini):
+  1920x1080, ShaderModel=3, Anisotropy=16, HiResTextures=1, ShadowQuality=2, UseVSync=True, Use32BitTextures=True
+
+dxvk-2.7.1-x32-d3d9.dll  (DXVK 2.7.1, https://github.com/doitsujin/dxvk, 32-bit d3d9.dll; bundled here)
+  Copy to System\d3d9.dll. Runs the game on Vulkan. Fixes crashes inside NVIDIA's DirectX 9 driver
+  (nvd3dum.dll, seen in the Windows event log when saving).
+
+OPTIONAL, NOT INSTALLED (download yourself if wanted)
+-----------------------------------------------------
+ReShade (https://reshade.me) - post-processing; pick Vulkan if DXVK is used, else Direct3D 9.
+Gigachad HD Textures (ModDB: splinter-cell-chaos-theory-texture-upscale) - AI-upscaled textures, demo
+  (not every mission). ModDB blocks scripted downloads.
