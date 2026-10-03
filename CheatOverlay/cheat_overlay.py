@@ -906,7 +906,9 @@ class Opsat:
                 self.shown = False
             return
         x, chat_top, bottom, w, _, sc = dock(hwnd)
-        size = (w, int((bottom - chat_top) / 0.28 * 0.66))
+        full = (bottom - chat_top) / 0.28 * 0.66
+        # RADAR is a compact panel so the game stays visible; DVORAK and INTEL keep the full height.
+        size = (w, int(full * (0.6 if self.TABS[self.tab] == 'RADAR' else 1.0)))
         if (x, bottom) != self.anchor or size != self.size or not self.shown:
             if not self.shown and not self.closing:
                 self.slide = (time.monotonic(), 0.0, 1.0)  # first frame on screen: start the slide here
