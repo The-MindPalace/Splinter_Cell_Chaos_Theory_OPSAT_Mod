@@ -493,10 +493,11 @@ class Game:
                             centre = self.room_world.get(room)
                             # Some markers sit oddly in the map model (the Bank vault): if one lands far from
                             # its own room, steer to the room instead.
-                            if centre and math.hypot(loc[0] - centre[0], loc[1] - centre[1]) > 15 * UU_PER_M:
+                            approx = bool(centre and math.hypot(loc[0] - centre[0], loc[1] - centre[1]) > 15 * UU_PER_M)
+                            if approx:  # only the area is reliable for this one, not the exact spot
                                 loc = centre
                             out.append({'name': bid or oid, 'objective': oid, 'done': done, 'loc': loc,
-                                        'room': room})
+                                        'room': room, 'approx': approx})
         return out
 
     def _fstring(self, addr):
@@ -800,6 +801,10 @@ class Opsat:
         return min(marks, key=lambda ob: (not ob['primary'], order.get(ob['objective'], 99),
                                           relative(sam, ob['loc'])[0])) if marks else None
 
+    def in_area(self, ob):
+        """Sam is already in the area of a marker whose exact spot is unknown (no distance/direction to show)."""
+        return bool(ob and ob.get('approx') and ob.get('room') and ob.get('room') == self.room)
+
     def route_to(self, ob):
         return self.game.route(self.room, ob.get('room')) if self.game and ob else None
 
@@ -840,7 +845,8 @@ class Opsat:
         if nxt:
             path = self.route_to(nxt) or []
             via = ('  via ' + ' › '.join(r.replace('_', ' ') for r in path[1:3])) if len(path) > 1 else ''
-            nxt_line = '%s   %.0fm%s' % (nxt['label'], relative(self.intel['sam'], nxt['loc'])[0], via)
+            dist = 'in this area' if self.in_area(nxt) else '%.0fm' % relative(self.intel['sam'], nxt['loc'])[0]
+            nxt_line = '%s   %s%s' % (nxt['label'], dist, via)
         else:  # no map marker: name the first pending primary instead
             pending = [r[0] for r in must if r[1] == 0]
             nxt_line = 'Get to extraction' if must and done == len(must) else (pending[0] if pending else '')
@@ -1137,10 +1143,11 @@ class Opsat:
             self.card(c, pad, y, width, px(58), px, '#86cdfa1c')
             c.create_text(pad + px(14), y + px(9), anchor='nw', text='NEXT', fill=self.BLUE, font=font(8, True))
             c.create_text(pad + px(14), y + px(24), anchor='nw', text=nxt['label'], fill=self.INK, font=font(14, True))
-            c.create_text(pad + width - px(14), y + px(8), anchor='ne', text='%.0fm' % dist, fill=self.BLUE,
-                          font=font(17, True))
-            c.create_text(pad + width - px(14), y + px(34), anchor='ne', text="%d o'clock%s" % (clock, level),
-                          fill=self.MUTE, font=font(9))
+            here = self.in_area(nxt)
+            c.create_text(pad + width - px(14), y + px(8), anchor='ne', text='HERE' if here else '%.0fm' % dist,
+                          fill=self.BLUE, font=font(17, True))
+            c.create_text(pad + width - px(14), y + px(34), anchor='ne', fill=self.MUTE, font=font(9),
+                          text='in this area' if here else "%d o'clock%s" % (clock, level))
             y += px(64)
             if len(path) > 1:
                 t = c.create_text(pad, y, anchor='nw', fill=self.BLUE, font=font(9), width=width,
@@ -1204,6 +1211,8 @@ class Opsat:
             r = px(5)
             c.create_oval(xs - r, ys - r, xs + r, ys + r, fill=col if abs(dz) < 2.5 else '', outline=col, width=px(2))
         for ob in self.visible_markers():
+            if self.in_area(ob):  # exact spot unknown: no blip rather than a wrong one
+                continue
             xs, ys, dist, bearing, dz = to_screen(ob['loc'])
             is_next = nxt is not None and ob['label'] == nxt['label']
             if dist <= RANGE_M:
@@ -1367,6 +1376,9 @@ class Overlay:
                 if not ob['done']:
                     dist, bearing, dz = relative(intel['sam'], ob['loc'])
                     clock = int(round(bearing / 30)) % 12 or 12
+                    if ob.get('approx'):
+                        beacons.append((dist, '  %s: somewhere in %s (exact spot unknown)' % (pretty(ob['name']), ob['room'])))
+                        continue
                     beacons.append((dist, '  %s: ~%.0fm at %d o\'clock%s' % (
                         pretty(ob['name']), dist, clock, '' if abs(dz) < 2.5 else ' (%.0fm %s)' % (abs(dz), 'up' if dz > 0 else 'down'))))
             if beacons:
