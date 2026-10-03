@@ -1022,7 +1022,14 @@ class Opsat:
             if moves:
                 t = c.create_text(pad + px(14), y, anchor='nw', fill=self.MUTE, font=font(8, True), text='WAYS THROUGH')
                 y = c.bbox(t)[3] + px(4)
-            y = self.numbered(c, moves, pad + px(14), y, width - px(28), px, self.body(11), self.SOFT)
+            # Leave DVORAK room once the conversation starts; RADAR always lists every way.
+            talking = self.typing or any(w == 'dvorak' for w, _ in self.chat)
+            shown = moves[:2] if talking else moves
+            y = self.numbered(c, shown, pad + px(14), y, width - px(28), px, self.body(11), self.SOFT)
+            if len(shown) < len(moves):
+                t = c.create_text(pad + px(34), y, anchor='nw', fill=self.MUTE, font=font(8, True),
+                                  text='+%d MORE ON RADAR' % (len(moves) - len(shown)))
+                y = c.bbox(t)[3] + px(4)
             if warn:
                 t = c.create_text(pad + px(14), y + px(3), anchor='nw', text=warn, fill=RED, width=width - px(28),
                                   font=font(9, True))
