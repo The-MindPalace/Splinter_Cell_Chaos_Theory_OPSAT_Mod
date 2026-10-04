@@ -138,6 +138,7 @@ class Game:
         self._resolve()
         self.players = []
         self.last_scan = 0.0
+        self.stress_seen = {}   # controller -> [baseline rank, time the stress rose above it or None]
 
     def name(self, i):
         s = self.name_cache.get(i)
@@ -288,6 +289,7 @@ class Game:
             if not pose or not any(pose[0]):
                 continue
             pat = self.m.u32(c + P('EAIController', 'Pattern'))
+            stress = enum('StressSteps', self._byte(pat + P('EPattern', 'Stress_ReactionStep'))) if pat else 'S_Casual'
             guards.append({
                 'name': self.oname(self.m.u32(pawn + O_CLASS)) or '?',
                 'loc': pose[0], 'yaw': pose[1],
@@ -295,7 +297,7 @@ class Game:
                 'state': self._state_name(c) or '',
                 'goal': enum('GoalType', self._byte(c + P('EAIController', 'LastGoalType'))),
                 'event': enum('AIEventType', self._byte(pat + P('EPattern', 'CurrentEventType'))) if pat else 'AI_NONE',
-                'stress': enum('StressSteps', self._byte(pat + P('EPattern', 'Stress_ReactionStep'))) if pat else 'S_Casual',
+                'stress': stress, 'stress_up': self._stress_up(c, stress),
                 'cone': self._f32(pawn + P('EPawn', 'm_VisibilityConeAngle')),
                 'range': self._f32(pawn + P('EPawn', 'm_VisibilityMaxDistance')),
             })
@@ -314,8 +316,32 @@ class Game:
                 'range': self._f32(snr + P('ESensor', 'VisibilityMaxDistance')),
             })
         alarm = self.m.u32(self.level_info + P('EchelonLevelInfo', 'AlarmStage')) if self.level_info else None
+        if alarm is not None and not 0 <= alarm <= 16:  # half-built level while loading: not a real stage
+            alarm = None
         return {'sam': sam_pose, 'guards': guards, 'sensors': sensors, 'alarm': alarm,
                 'objectives': self.objective_markers()}
+
+    def _stress_up(self, ctrl, stress):
+        """Has this guard's stress risen above where it started, in the last 45 s? Levels start guards at
+        different steps (Penthouse: 3 in S_NormalA and 3 in S_NormalB at load, no reaction yet), so a stress
+        name alone says nothing; a rise does. After 45 s the higher step is that guard's new normal."""
+        rank = STRESS_RANK.get(stress, 0)
+        seen = self.stress_seen.get(ctrl)
+        now = time.monotonic()
+        if seen is None:
+            if len(self.stress_seen) > 400:  # controllers from earlier levels
+                self.stress_seen.clear()
+            self.stress_seen[ctrl] = [rank, None]
+            return False
+        if rank <= seen[0]:
+            seen[0], seen[1] = rank, None
+            return False
+        if seen[1] is None:
+            seen[1] = now
+        if now - seen[1] > 45:
+            seen[0], seen[1] = rank, None
+            return False
+        return True
 
     def _is_pc(self, cls):
         for _ in range(16):
@@ -655,6 +681,9 @@ EVENTS = {'AI_AUDIO': 'heard something', 'AI_VISUAL': 'saw something', 'AI_SEE_E
           'AI_CHANGED_DOOR_BROKEN': 'noticed a broken door', 'AI_SEE_ENEMY_MIRROR': 'saw you in a mirror'}
 
 
+STRESS_RANK = {'S_Casual': 0, 'S_NormalA': 1, 'S_NormalB': 2, 'S_Repetition': 3}
+
+
 def guard_mood(g):
     """(label, colour) from the guard's own AI state machine."""
     st = g['state']
@@ -664,9 +693,9 @@ def guard_mood(g):
         return 'OUT', GREY
     if g['goal'] in ('GOAL_Shoot', 'GOAL_MoveAndShoot', 'GOAL_ThrowGrenade') or g['stress'].startswith('S_HighStress'):
         return 'ALERT', RED
-    # S_NormalA alone is a baseline: whole levels of armed guards sit there from the start (Penthouse had 6-7
-    # "suspicious" all mission). Suspicious = a step past it, or on edge and reacting to something right now.
-    if g['stress'] in ('S_NormalB', 'S_Repetition') or (g['stress'] == 'S_NormalA' and g['event'] not in ('AI_NONE', '')):
+    # Suspicious = stress just rose above that guard's own starting step (see Game._stress_up), or reacting to
+    # an event right now. A stress name alone is not enough: levels start guards in S_NormalA/S_NormalB.
+    if g.get('stress_up') or g['event'] not in ('AI_NONE', ''):
         return 'SUSPICIOUS', AMBER
     return 'CALM', '#9fe08a'
 
@@ -794,11 +823,13 @@ class Opsat:
         primaries_left = not rows or any(st == 0 and ty in (0, 3) for _, st, ty in rows)
         ids = {o[2]: (o[1], o[4]) for o in self.objs}
         given = [ob for ob in (self.intel or {}).get('objectives') or []
-                 if ids.get(ob['objective'], (None,))[0] == 0]
+                 if ids.get(ob['objective'], (None,))[0] == 0
+                 or (ob['objective'] not in ids and 'extract' in (ob['objective'] + ob['name']).lower()
+                     and not primaries_left)]
         out = []
         for ob in merge_markers(given, self.marker_name):  # filter first: merging must not count hidden ones
             if not ('extract' in ob['label'].lower() and primaries_left):
-                ob['primary'] = ids[ob['objective']][1] in (0, 3)
+                ob['primary'] = ids.get(ob['objective'], (0, 0))[1] in (0, 3)
                 out.append(ob)
         return out
 
@@ -1047,6 +1078,10 @@ class Overlay:
         self.panel.on_error = self.panel_error
         self.panel.dvorak_online = self.dvorak.online
         self.queued = []        # questions typed while DVORAK was still answering
+        self.retry_q = None     # the question a rejected key swallowed: asked again once a new key is saved
+        self.chat_mission = None
+        from runlog import RunLog
+        self.runlog = RunLog()
         self.key_asked = False  # asked for the API key this run
         self.keys_down = set()
         self.game_fg = False
@@ -1186,6 +1221,10 @@ class Overlay:
                 self.say('api key updated')
             self.dvorak.reload_config()
             panel.dvorak_online = self.dvorak.online
+            q, self.retry_q = self.retry_q, None
+            if q and self.dvorak.online:  # Fisher asked this; the old key ate it
+                self.ask_dvorak(q, quiet=True)
+                return
             panel.render()
             return
         self.dvorak.reload_config()
@@ -1247,6 +1286,7 @@ class Overlay:
                 panel.chat.append(['sys', 'DVORAK error: ' + text])
                 self.say('dvorak error:', text)
                 if 'key' in text.lower() and ('rejected' in text.lower() or 'permission' in text.lower()):
+                    self.retry_q = next((t for w, t in reversed(panel.chat) if w == 'fisher'), None)
                     panel.chat.append(['sys', 'DVORAK: That key does not work. Paste a working Anthropic API key '
                                               '(Ctrl+V) and press ENTER. ESC to skip.'])
                     panel.tab = panel.TABS.index('DVORAK')
@@ -1270,7 +1310,7 @@ class Overlay:
         sect = next((v for k, v in panel.titles.items() if k.startswith('p_' + (mission or '').lower())), {})
         snap = {
             'mission': mission, 'room': room,
-            'objs': {o[0]: o[1] for o in objs},
+            'objs': {o[0]: o[1] for o in objs if o[0]},
             'alarm': (intel or {}).get('alarm'),
             'alert': sum(1 for g in (intel or {}).get('guards', []) if guard_mood(g)[0] == 'ALERT'),
             'down': sum(1 for g in (intel or {}).get('guards', []) if guard_mood(g)[0] in ('DEAD', 'OUT')),
@@ -1342,6 +1382,7 @@ class Overlay:
             self.say('game closed - waiting')
         self.mem = self.game = None
         self.dvorak.consolidate()  # game closed: save what was discussed
+        self.runlog.close()
         self.last = self.hud = self.cur_mission = None
         self.panel.open = self.panel.closing = False  # a new game session starts with OPSAT closed
         self.game_fg = False
@@ -1398,12 +1439,18 @@ class Overlay:
             if self.cur_mission:
                 self.dvorak.consolidate()
             self.cur_mission, self.announced = mission, False
+            m = self.panel.hints.get((mission or '').lower())
+            if m and mission != self.chat_mission:  # a new mission starts a clean thread (reloads keep it)
+                self.chat_mission = mission
+                self.panel.chat[:] = [['event', 'Mission: ' + m['title'].split(' (')[0]]]
+                self.queued, self.retry_q = [], None
         if mission and room and not self.announced:
             self.announced = True
             self.toast_until = time.monotonic() + 6  # "OPSAT V1.2 - up arrow" once per mission
         intel = self.game.intel()
         self.panel.intel = intel
         self.track_triggers(mission, room, objs, intel)
+        self.runlog.tick(mission, room, objs, intel, guard_mood, relative)  # the training set (runs/)
         threat = self.threat_chip(intel)
         self.panel.game_hwnd = hwnd
         self.pump_dvorak(mission)

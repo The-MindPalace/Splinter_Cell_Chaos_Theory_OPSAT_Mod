@@ -8,3 +8,7 @@ mods/*.dll
 # local secrets - never commit
 api_key.txt
 *.key
+
+# bot captures
+tools/bot/live/
+tools/bot/__pycache__/

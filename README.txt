@@ -39,6 +39,10 @@ OPSAT reads it locally from CheatOverlay\walkthrough.json; the readable version 
 Nothing is looked up online while you play. DVORAK only calls the API when you press Insert and ask
 (no web search, no automatic SITREPs), and answers from the same field notes plus live telemetry.
 
+Run recorder: every mission you play leaves a compact track (room, position, alarm, nearby guards, twice a
+second; objective changes) in %USERPROFILE%\Saved Games\OPSAT\runs - local only. It is the training set for
+the Sam bot (tools\bot, playbook in training\LESSONS.md).
+
 Your data (API key, DVORAK memory, relationship, chat log) is in %USERPROFILE%\Saved Games\OPSAT and survives
 reinstalling the game or the mod. Delete that folder to start DVORAK from scratch.
 

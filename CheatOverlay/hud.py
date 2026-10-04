@@ -537,6 +537,9 @@ def radar(c, v, acc, fns, bx, by, bw, bh):
         heading = (yaw - sam[1]) / 65536 * 360
         r.pie(x, y, length_m * k, heading - deg / 2, heading + deg / 2, fill=rgba(col, fa), outline=rgba(col, ea), width=1.5)
 
+    taken = [(cx - 14, cy - 16, cx + 14, cy + 16),                       # Sam's arrow
+             (cx - 20, cy - R + 10, cx + 20, cy - R + 28),                # '20 m'
+             (cx + 3, cy - R / 2 + 1, cx + 21, cy - R / 2 + 18)]          # '10'
     for snr in v.intel.get('sensors', []):
         x, y, dist, _, dz = to_screen(snr['loc'])
         if dist > fns.range_m or snr['state'] in OFF_STATES:
@@ -550,9 +553,17 @@ def radar(c, v, acc, fns, bx, by, bw, bh):
             r.rect(x - q, y - q, x + q, y + q, fill=rgba(col))
         else:
             r.rect(x - q, y - q, x + q, y + q, outline=rgba(col), width=1.5)
+        taken.append((x - q - 2, y - q - 2, x + q + 2, y + q + 2))
     for g in v.intel.get('guards', []):
-        x, y, dist, _, dz = to_screen(g['loc'])
+        x, y, dist, bearing, dz = to_screen(g['loc'])
         if dist > fns.range_m:
+            mood = fns.guard_mood(g)[0]
+            if dist <= fns.range_m * 1.75 and mood not in ('DEAD', 'OUT'):
+                # just past the rim (the Bank pair talks at 21-24 m): a blip on the edge, nearer = stronger
+                b = math.radians(bearing)
+                near = 1 - (dist - fns.range_m) / (fns.range_m * .75)
+                ex, ey = cx + math.sin(b) * (R - 7), cy - math.cos(b) * (R - 7)
+                r.circle(ex, ey, 3.5, fill=rgba(MOOD.get(mood, GREEN), .35 + .5 * near))
             continue
         mood = fns.guard_mood(g)[0]
         if mood in ('DEAD', 'OUT'):
@@ -568,6 +579,7 @@ def radar(c, v, acc, fns, bx, by, bw, bh):
             r.circle(x, y, 6, fill=rgba(col))
         else:  # another floor: hollow
             r.circle(x, y, 6, outline=rgba(col), width=2)
+        taken.append((x - 8, y - 8, x + 8, y + 8))
     fl = r.f('B', 15, 600)
     inside, rim = [], []
     for ob in v.markers:
@@ -580,9 +592,6 @@ def radar(c, v, acc, fns, bx, by, bw, bh):
         (inside if dist <= fns.range_m else rim).append(mark)
     # Next objective first, then nearest: it keeps its label when space runs out.
     key = lambda m: (not m['next'], m['dist'])
-    taken = [(cx - 14, cy - 16, cx + 14, cy + 16),                       # Sam's arrow
-             (cx - 20, cy - R + 10, cx + 20, cy - R + 28),                # '20 m'
-             (cx + 3, cy - R / 2 + 1, cx + 21, cy - R / 2 + 18)]          # '10'
 
     def place(text, spots, force=False):
         """First label spot whose box hits nothing already drawn: (x, baseline, align). Spots are slid inside
@@ -623,7 +632,7 @@ def radar(c, v, acc, fns, bx, by, bw, bh):
         taken.append((x - d - 5, y - top, x + d + 5, y + bottom))
     for m in sorted(inside, key=key):
         x, y = m['x'], m['y']
-        text = m['name'] + ('  +%d' % m['more'] if m['more'] else '') + updown(m)
+        text = m['name'] + updown(m) + ('  +%d' % m['more'] if m['more'] else '')
         side = [(x - 16, y + 5, 'r'), (x + 16, y + 5, 'l')]
         spot = place(text, (side if x > cx + R * .3 else side[::-1]) + [(x, y - 14, 'm'), (x, y + 25, 'm')],
                      force=m['next'])
@@ -649,7 +658,7 @@ def radar(c, v, acc, fns, bx, by, bw, bh):
         b = math.radians(p['bearing'])
         sb, cb = math.sin(b), -math.cos(b)
         align = 'r' if sb > .35 else 'l' if sb < -.35 else 'm'
-        text = '%s%s %.0fm' % (p['name'], '  +%d' % p['more'] if p['more'] else '', p['dist']) + updown(p)
+        text = '%s %.0fm%s%s' % (p['name'], p['dist'], updown(p), '  +%d' % p['more'] if p['more'] else '')
         spots = [(cx + sb * (R - k), cy + cb * (R - k) + 5 + dy, align) for k in (22, 40, 58) for dy in (0, -18, 18)]
         spot = place(text, spots, force=True)
         if spot:
@@ -879,17 +888,7 @@ def _thread_blocks(c, v):
                 b += 21 if ln else 8
         blocks.append((h, draw))
 
-    if not chat and not v.online:
-        intro('BRING DVORAK ONLINE', AMBER, [
-            ('1  Get an API key at console.anthropic.com (starts with sk-ant-).', SOFT),
-            ('2  Press INS, paste it with Ctrl+V, press ENTER.', SOFT),
-            ('DVORAK only calls the API when you ask. Radar and intel never need it.', MUTE)])
-    elif not chat:
-        intro('ASK DVORAK', GREEN, [
-            ('Sees the live telemetry and the field notes for every objective. Try:', SOFT),
-            ('\u201cHow do I get past the guards in this room?\u201d', BRIGHT),
-            ('\u201cWhat\u2019s the door code here?\u201d', BRIGHT),
-            ('\u201cQuietest way to the next objective?\u201d', BRIGHT)])
+    talk = any(w != 'event' for w, _ in chat)  # only event lines so far (a mission header): still "empty"
     for i, (who, text) in enumerate(chat):
         if who == 'fisher':
             question(text) if i == last_q else row(who, text)
@@ -900,7 +899,18 @@ def _thread_blocks(c, v):
         else:
             warn = any(w in text.lower() for w in ('error', 'offline', 'does not work', 'rejected', 'no connection'))
             sysline(text, AMBER if warn else MUTE)
-    if not v.online and chat:  # an empty thread shows the setup steps instead
+    if not talk and not v.online:
+        intro('BRING DVORAK ONLINE', AMBER, [
+            ('1  Get an API key at console.anthropic.com (starts with sk-ant-).', SOFT),
+            ('2  Press INS, paste it with Ctrl+V, press ENTER.', SOFT),
+            ('DVORAK only calls the API when you ask. Radar and intel never need it.', MUTE)])
+    elif not talk:
+        intro('ASK DVORAK', GREEN, [
+            ('Sees the live telemetry and the field notes for every objective. Try:', SOFT),
+            ('\u201cHow do I get past the guards in this room?\u201d', BRIGHT),
+            ('\u201cWhat\u2019s the door code here?\u201d', BRIGHT),
+            ('\u201cQuietest way to the next objective?\u201d', BRIGHT)])
+    elif not v.online:  # an empty thread shows the setup steps instead
         event('LINK DOWN \u00b7 ENTER AN API KEY', AMBER)
     return blocks
 
