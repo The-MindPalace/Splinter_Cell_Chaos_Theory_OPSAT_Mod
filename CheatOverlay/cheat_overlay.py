@@ -664,7 +664,9 @@ def guard_mood(g):
         return 'OUT', GREY
     if g['goal'] in ('GOAL_Shoot', 'GOAL_MoveAndShoot', 'GOAL_ThrowGrenade') or g['stress'].startswith('S_HighStress'):
         return 'ALERT', RED
-    if g['stress'] in ('S_NormalA', 'S_NormalB', 'S_Repetition'):
+    # S_NormalA alone is a baseline: whole levels of armed guards sit there from the start (Penthouse had 6-7
+    # "suspicious" all mission). Suspicious = a step past it, or on edge and reacting to something right now.
+    if g['stress'] in ('S_NormalB', 'S_Repetition') or (g['stress'] == 'S_NormalA' and g['event'] not in ('AI_NONE', '')):
         return 'SUSPICIOUS', AMBER
     return 'CALM', '#9fe08a'
 
@@ -785,15 +787,18 @@ class Opsat:
         return [(sect[o[0]], o[1], o[4]) for o in self.objs if sect.get(o[0])]
 
     def visible_markers(self):
-        """Pending objective beacons (beacon ObjID == objective ID); extraction only once primaries are done."""
+        """Beacons of objectives the game has given and that are still pending (beacon ObjID == objective ID).
+        Beacons of objectives not given yet only carry internal names ("IND_DVORAK", "BUMP OBJECTIVE") and give
+        the plot away, so they never show. Extraction only once the primaries are done."""
         rows = self.objective_rows()
         primaries_left = not rows or any(st == 0 and ty in (0, 3) for _, st, ty in rows)
         ids = {o[2]: (o[1], o[4]) for o in self.objs}
+        given = [ob for ob in (self.intel or {}).get('objectives') or []
+                 if ids.get(ob['objective'], (None,))[0] == 0]
         out = []
-        for ob in merge_markers((self.intel or {}).get('objectives') or [], self.marker_name):
-            status, otype = ids.get(ob['objective'], (0, 0))
-            if status == 0 and not (ob['label'].startswith('EXTRACT') and primaries_left):
-                ob['primary'] = otype in (0, 3)
+        for ob in merge_markers(given, self.marker_name):  # filter first: merging must not count hidden ones
+            if not ('extract' in ob['label'].lower() and primaries_left):
+                ob['primary'] = ids[ob['objective']][1] in (0, 3)
                 out.append(ob)
         return out
 
@@ -944,7 +949,7 @@ class Opsat:
             return
         r = wt.RECT()
         u32.GetWindowRect(hwnd, ctypes.byref(r))  # docked to the frame's bottom-left corner, grows upward
-        x, bottom, sc = r.left, r.bottom, max(0.8, (r.bottom - r.top) / 1080)
+        x, bottom, sc = r.left, r.bottom, max(0.8, (r.bottom - r.top) / 1080) * hud.UI_SCALE
         w = int(hud.WIDTH * sc)
         if self.shown and (x, bottom) == self.anchor and w == self.size[0]:
             self.start_resize()  # same spot: glide to the tab's height instead of jumping
@@ -1153,7 +1158,7 @@ class Overlay:
                     dist, clock, floor, mood, ACTIVITY.get(gd['goal'], gd['goal']),
                     EVENTS.get(gd['event'], 'nothing'))))
             beacons = []
-            for ob in intel.get('objectives') or []:
+            for ob in panel.visible_markers():  # given and pending only: no internal names, no plot spoilers
                 if not ob['done']:
                     dist, bearing, dz = relative(intel['sam'], ob['loc'])
                     clock = int(round(bearing / 30)) % 12 or 12
@@ -1307,10 +1312,11 @@ class Overlay:
             alarm = ('ALARM %d' % intel['alarm'], RED)
         else:
             alarm = None
-        alert = [relative(intel['sam'], g['loc'])[0] for g in intel['guards'] if guard_mood(g)[0] == 'ALERT']
+        near = [(guard_mood(g)[0],) + relative(intel['sam'], g['loc']) for g in intel['guards']]
+        alert = [d for mood, d, _, dz in near if mood == 'ALERT' and d <= 40]
         if alert:
             return ('HOSTILE ALERT  %.0fm' % min(alert), RED)
-        susp = [relative(intel['sam'], g['loc'])[0] for g in intel['guards'] if guard_mood(g)[0] == 'SUSPICIOUS']
+        susp = [d for mood, d, _, dz in near if mood == 'SUSPICIOUS' and d <= RANGE_M and abs(dz) < 4]
         if susp:
             return ('GUARD SUSPICIOUS  %.0fm' % min(susp), AMBER)
         return alarm
@@ -1407,9 +1413,13 @@ class Overlay:
             self.panel.render()
             self.say('mission', mission, '| level', self.game.level_name, '| room', room,
                      '| objectives', [(o[0], o[1]) for o in objs])
+            if intel:
+                live = [g for g in intel['guards'] if guard_mood(g)[0] not in ('DEAD', 'OUT')]
+                count = lambda key: sorted(__import__('collections').Counter(g[key] for g in live).items())
+                self.say('guards | stress', count('stress'), '| events', count('event'))
         self.panel.place(hwnd, self.game_fg or self.panel.typing)
         toast = time.monotonic() < self.toast_until
-        sc = dock(hwnd)[5] if hwnd else 1.0
+        sc = (dock(hwnd)[5] if hwnd else 1.0) * hud.UI_SCALE
         if (toast, threat, cheats, sc) != self.hud:
             self.hud = (toast, threat, cheats, sc)
             self.draw(toast, threat, cheats, sc)

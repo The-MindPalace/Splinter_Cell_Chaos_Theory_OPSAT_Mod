@@ -17,15 +17,17 @@ Controls:
   The arrow keys are taken off movement in your game profile; WASD moves Sam.
   F2 / F3 still toggle god mode / invisible, but OPSAT and DVORAK ignore them.
 
-RADAR     Opens first. NEXT (objective, distance, clock bearing, floors up/down), a HERE line with the
-          area's goal, then the radar: 20 m rim, guards with view cones (green calm, amber suspicious,
-          red alert, hollow = another floor), cameras (filled squares) and sensors (outlined), objective
-          diamonds labelled with short names ("Vault panels"). Objectives past the rim point from the
-          edge with name and distance; ones in the same direction share a pointer ("Server +2 65m").
-          On the right: alarms / alert / suspicious / facing you / cameras.
-INTEL     The area you are in, NEXT with the rooms to go through, FROM HERE (what to do in the exact
-          area you are standing in, step by step), the objective's own ways through, and the checklist
-          with the mission's fail condition.
+RADAR     Opens first. NEXT names the objective by the same short name its radar diamond carries
+          ("Zherkezhi's server"), the full game title under it, distance and clock bearing on the right.
+          HERE (green) is the goal of the area you are standing in. Then the radar: 20 m rim, guards with
+          view cones (green calm, amber suspicious, red alert, hollow = another floor), cameras (filled
+          squares), sensors (outlined), objective diamonds with a small arrow and "▲3m" / "▼4m" when
+          they are above or below you. Objectives past the rim point from the edge with name and distance;
+          ones in the same direction share a pointer ("Server +2 65m"). Objectives the game has not given
+          you yet never show. On the right: alarms, then alert / suspicious / facing you / cameras near you.
+INTEL     NEXT (where the objective is, the rooms to go through), then FROM HERE, the big green block:
+          the area you are in, what to do there and how, step by step. Below it the objective's own ways
+          through, and the checklist with the mission's fail condition.
 DVORAK    The chat. DVORAK = Claude Haiku 4.5; it asks for your Anthropic API key (again if a key is
           rejected), plans for a pure stealth operator, and remembers your campaign across sessions.
 With the panel closed, a small strip bottom-left shows the worst live threat and GOD / INVISIBLE.

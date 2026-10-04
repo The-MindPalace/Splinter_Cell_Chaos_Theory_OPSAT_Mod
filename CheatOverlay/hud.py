@@ -28,7 +28,8 @@ INK, BRIGHT, SOFT, MUTE = '#eef4ef', '#dbe4dd', '#b9c7bd', '#8a9b90'
 GREEN, BLUE, AMBER, RED = '#8ff0a4', '#86cdfa', '#ffb347', '#ff5a4f'
 BASE, ON_ACC, WHITE, BLACK = '#04110c', '#03120a', '#ffffff', '#000000'
 
-WIDTH, H_RADAR, H_FULL = 560, 616, 770      # panel sizes (spec 01)
+WIDTH, H_RADAR, H_FULL = 560, 672, 770      # design px; RADAR is the spec's 616 + room for a two-line HERE
+UI_SCALE = 1.15                             # on top of screen height / 1080: the user asked for +10-25% after play
 X0, X1 = 28, 508                            # content edges: 28 from the rail; text stays where the backdrop is dense
 FOOT = 38                                   # pinned footer
 SS = 2                                      # radar supersampling
@@ -365,11 +366,11 @@ def footer(c, H, v):
             x += 7 + c.text(x + 7, base, '\u00b7', fl, MUTE) + 7
 
 
-def distance_block(c, v, xr, y, h):
-    """Distance (largest figure in the panel) with bearing under it; returns its width."""
+def distance_block(c, v, xr, y, h, size=38):
+    """Distance (largest figure on RADAR) with bearing under it; returns its width."""
     if not v.has_dist:
         return 0
-    fb, fu, fs = c.f('B', 38, 700), c.f('B', 19, 700), c.f('B', 14, 600)
+    fb, fu, fs = c.f('B', size, 700), c.f('B', size / 2, 700), c.f('B', 14, 600)
     nb = y + h / 2 + 8
     if v.here_flag:
         w = c.text(xr, nb, 'HERE', fb, BLUE, track=.05, align='r')
@@ -379,12 +380,55 @@ def distance_block(c, v, xr, y, h):
     return max(uw + nw + 1, c.text(xr, nb + 17, v.bearing, fs, SOFT, align='r'))
 
 
+def radar_next(c, v, y):
+    """RADAR's NEXT: the objective by the same short name its diamond carries on the radar ("Zherkezhi's
+    server"), so plate and blip pair at a glance; the full game title under it; distance right."""
+    h = 84
+    dry, c.dry = c.dry, True
+    dw = distance_block(c, v, X1 - 16, y, h)
+    c.dry = dry
+    width = (X1 - 16) - (X0 + 16) - (dw + 18 if dw else 0)
+    c.plate(X0, y, X1, y + h, BLUE, .14, .08, cut=10, mark=BLUE)
+    c.text(X0 + 16, y + 24, 'NEXT', c.f('B', 13.5, 700), BLUE, track=.16)
+    tag = v.next_tag or v.next_title or 'Waiting for mission telemetry'
+    for size in (20, 18, 16.5):
+        ft = c.f('S', size, 600)
+        if c.w(tag, ft) <= width:
+            break
+    c.text(X0 + 16, y + 52, c.fit(tag, ft, width), ft, INK if (v.next_tag or v.next_title) else MUTE)
+    if v.next_title and v.next_title != tag:
+        fs = c.f('S', 14.5)
+        c.text(X0 + 16, y + 73, c.fit(v.next_title, fs, width), fs, SOFT)
+    distance_block(c, v, X1 - 16, y, h)
+    return y + h
+
+
+def here_strip(c, v, acc, y):
+    """RADAR's HERE: the goal of the area Sam is in, live colour, up to two lines. Returns the bottom edge."""
+    fl = c.f('B', 13.5, 700)
+    lw = c.w('HERE', fl, .16)
+    width = X1 - X0 - 36 - lw - 12
+    if v.here:
+        fs = c.f('S', 17, 600)
+        lines, colour, track = c.wrap(v.here['next'], fs, width, 2), INK, 0.0
+    else:  # no field notes for this room: at least name it
+        fs = fl
+        lines, colour, track = [c.fit(v.room.upper(), fl, width, .12)], SOFT, .12
+    h = 40 + (len(lines) - 1) * 23
+    c.plate(X0, y, X1, y + h, acc, .15, .05, cut=8, mark=acc)
+    c.text(X0 + 16, y + 26, 'HERE', fl, acc, track=.16)
+    for i, line in enumerate(lines):
+        c.text(X0 + 28 + lw, y + 26.5 + i * 23, line, fs, colour, track=track)
+    return y + h
+
+
 def next_plate(c, v, y, max_lines, route=False):
     """NEXT plate: objective title left (S 17 one line on RADAR, S 16 up to 2 lines on INTEL), distance right.
     With `route`, a line under the title names the rooms to go through (the 3D map's room graph), because the
     straight-line distance and bearing say nothing about which door or floor."""
+    dsize = 32  # INTEL: the objective is context; FROM HERE leads
     dry, c.dry = c.dry, True
-    dw = distance_block(c, v, X1 - 16, y, 64)
+    dw = distance_block(c, v, X1 - 16, y, 64, dsize)
     c.dry = dry
     width = (X1 - 16) - (X0 + 16) - (dw + 18 if dw else 0)
     title = v.next_title or 'Waiting for mission telemetry'
@@ -399,7 +443,7 @@ def next_plate(c, v, y, max_lines, route=False):
         lines = [c.fit(title, ft, width)]
     via = v.route if route and v.route else None
     h = max(64, 48 + (len(lines) - 1) * 22 + (22 if via else 0) + 16)
-    c.plate(X0, y, X1, y + h, BLUE, .14, .08, cut=10, mark=BLUE)
+    c.plate(X0, y, X1, y + h, BLUE, .11, .06, cut=10, mark=BLUE)
     c.text(X0 + 16, y + 24, 'NEXT', c.f('B', 13.5, 700), BLUE, track=.16)
     for i, line in enumerate(lines):
         c.text(X0 + 16, y + 48 + i * 22, line, ft, INK if v.next_title else MUTE)
@@ -407,7 +451,7 @@ def next_plate(c, v, y, max_lines, route=False):
         fr = c.f('S', 14.5)
         rw = c.text(X0 + 16, y + 48 + len(lines) * 22, '\u2192', c.f('S', 14.5, 600), BLUE)
         c.text(X0 + 22 + rw, y + 48 + len(lines) * 22, c.fit(' \u203a '.join(via), fr, width - rw - 6), fr, SOFT)
-    distance_block(c, v, X1 - 16, y, h)
+    distance_block(c, v, X1 - 16, y, h, dsize)
     return y + h
 
 
@@ -433,22 +477,21 @@ def threats(v, fns):
 
 
 OFF_STATES = ('s_Deactivated', 's_Malfunctioning', 's_Destructed', 's_Off', 's_Idle')
+FLOOR_M = 2.5      # height difference that counts as another floor (radar arrows, hollow guards, NEXT "3m up")
 MOOD = {'CALM': GREEN, 'SUSPICIOUS': AMBER, 'ALERT': RED}
 
 
 def radar_tab(c, v, acc, H, fns):
-    next_plate(c, v, 80, 1)
-    if v.here:
-        fl = c.f('B', 13.5, 700)
-        lw = c.text(X0, 172, 'HERE', fl, acc, track=.16)
-        fs = c.f('S', 16, 600)
-        c.text(X0 + lw + 10, 172, c.fit(v.here['next'], fs, X1 - X0 - lw - 10), fs, INK)
+    y = radar_next(c, v, 80) + 8
+    if v.here or v.room:  # HERE: the area's goal, in the live colour (the same voice as INTEL's FROM HERE)
+        y = here_strip(c, v, acc, y)
     if not v.intel:
-        c.text(X0, 230, 'Radar comes online in a mission.', c.f('S', 16), MUTE)
+        c.text(X0, y + 50, 'Radar comes online in a mission.', c.f('S', 16), MUTE)
         return
-    radar(c, v, acc, fns, X0, 186, 360, 380)
+    y0 = max(y + 8, H - FOOT - 10 - 380)  # sits on the footer; the plates above take what they need
+    radar(c, v, acc, fns, X0, y0, 360, 380)
     cells, gap = v.threats, 5
-    x0, x1, y0 = X0 + 372, X1, 186
+    x0, x1 = X0 + 372, X1
     ch = (380 - 4 * gap) / 5
     fn, fl = c.f('B', 34, 700), c.f('B', 13, 700)
     for i, (label, n, col) in enumerate(cells):
@@ -533,37 +576,57 @@ def radar(c, v, acc, fns, bx, by, bw, bh):
         x, y, dist, bearing, dz = to_screen(ob['loc'])
         is_next = v.nxt is not None and ob['label'] == v.nxt['label']
         mark = dict(x=x, y=y, dist=dist, bearing=bearing, next=is_next, name=ob.get('base', ob['label']),
-                    more=ob.get('extra', 0))
+                    more=ob.get('extra', 0), dz=dz if abs(dz) >= FLOOR_M else 0.0)
         (inside if dist <= fns.range_m else rim).append(mark)
     # Next objective first, then nearest: it keeps its label when space runs out.
     key = lambda m: (not m['next'], m['dist'])
     taken = [(cx - 14, cy - 16, cx + 14, cy + 16),                       # Sam's arrow
-             (cx - 20, cy - R + 10, cx + 20, cy - R + 28)]                # '20 m'
+             (cx - 20, cy - R + 10, cx + 20, cy - R + 28),                # '20 m'
+             (cx + 3, cy - R / 2 + 1, cx + 21, cy - R / 2 + 18)]          # '10'
 
-    def place(text, spots):
-        """First label spot whose box hits nothing already drawn: (x, baseline, align) or None."""
+    def place(text, spots, force=False):
+        """First label spot whose box hits nothing already drawn: (x, baseline, align). Spots are slid inside
+        the radar box first, so a label near the edge is never cut off. With `force` (the next objective, and
+        every off-range pointer) the first spot is used when all are taken: an overlap beats a missing name."""
         w = r.w(text, fl)
+        fits = []
         for x, base, align in spots:
             x0 = x - w if align == 'r' else x - w / 2 if align == 'm' else x
+            shift = max(0.0, 4 - x0) - max(0.0, x0 + w - (bw - 4))
+            x, x0 = x + shift, x0 + shift
+            base = min(max(base, 16), bh - 6)
             box = (x0 - 2, base - 13, x0 + w + 2, base + 4)
+            fits.append(((x, base, align), box))
             if all(box[2] < b[0] or box[0] > b[2] or box[3] < b[1] or box[1] > b[3] for b in taken):
                 taken.append(box)
                 return x, base, align
+        if force and fits:
+            taken.append(fits[0][1])
+            return fits[0][0]
         return None
+
+    def updown(m):
+        """Label suffix with an up/down arrow and the metres when the objective is on another floor."""
+        return ('  %s%.0fm' % ('\u25b2' if m['dz'] > 0 else '\u25bc', abs(m['dz']))) if m['dz'] else ''
 
     for m in sorted(inside, key=key):
         x, y, d = m['x'], m['y'], 8
         r.polygon([(x, y - d), (x + d, y), (x, y + d), (x - d, y)], fill=rgba(BLUE) if m['next'] else None,
                   outline=rgba(BLUE), width=2)
+        o = d + 5 if m['next'] else d
         if m['next']:
-            o = d + 5
             r.polygon([(x, y - o), (x + o, y), (x, y + o), (x - o, y)], outline=rgba(BLUE, .8), width=1.5)
-        taken.append((x - d - 5, y - d - 5, x + d + 5, y + d + 5))
+        if m['dz']:  # another floor: a small arrow off the diamond's tip, pointing the way (up or down)
+            k = -1 if m['dz'] > 0 else 1
+            r.polygon([(x, y + k * (o + 10)), (x - 5.5, y + k * (o + 3)), (x + 5.5, y + k * (o + 3))], fill=rgba(BLUE))
+        top, bottom = (o + 11, o + 5) if m['dz'] > 0 else (o + 5, o + 11) if m['dz'] else (o + 5, o + 5)
+        taken.append((x - d - 5, y - top, x + d + 5, y + bottom))
     for m in sorted(inside, key=key):
         x, y = m['x'], m['y']
-        text = m['name'] + ('  +%d' % m['more'] if m['more'] else '')
+        text = m['name'] + ('  +%d' % m['more'] if m['more'] else '') + updown(m)
         side = [(x - 16, y + 5, 'r'), (x + 16, y + 5, 'l')]
-        spot = place(text, (side if x > cx + R * .3 else side[::-1]) + [(x, y - 14, 'm'), (x, y + 25, 'm')])
+        spot = place(text, (side if x > cx + R * .3 else side[::-1]) + [(x, y - 14, 'm'), (x, y + 25, 'm')],
+                     force=m['next'])
         if spot:
             r.text(spot[0], spot[1], text, fl, BLUE, align=spot[2], halo=True)
     # Off-range: one pointer per direction. Objectives within 16 deg of each other share it ("Server +2 65m").
@@ -586,9 +649,9 @@ def radar(c, v, acc, fns, bx, by, bw, bh):
         b = math.radians(p['bearing'])
         sb, cb = math.sin(b), -math.cos(b)
         align = 'r' if sb > .35 else 'l' if sb < -.35 else 'm'
-        text = '%s%s %.0fm' % (p['name'], '  +%d' % p['more'] if p['more'] else '', p['dist'])
-        spots = [(cx + sb * (R - k), cy + cb * (R - k) + 5, align) for k in (22, 40, 58)]
-        spot = place(text, spots)
+        text = '%s%s %.0fm' % (p['name'], '  +%d' % p['more'] if p['more'] else '', p['dist']) + updown(p)
+        spots = [(cx + sb * (R - k), cy + cb * (R - k) + 5 + dy, align) for k in (22, 40, 58) for dy in (0, -18, 18)]
+        spot = place(text, spots, force=True)
         if spot:
             r.text(spot[0], spot[1], text, fl, BLUE, align=spot[2], halo=True)
     r.polygon([(cx, cy - 12), (cx + 9, cy + 11), (cx, cy + 5), (cx - 9, cy + 11)], fill=rgba(INK),
@@ -616,8 +679,8 @@ def intel_tab(c, v, acc, H):
         c.text(X0, 120, 'Intel comes online in a mission.', c.f('S', 16), MUTE)
         return
     bottom = H - FOOT - 6
-    # (FROM HERE steps, objective routes, lines per objective): FROM HERE is what to do where Sam stands, so
-    # the objective's own routes and the checklist give way before any of its steps do.
+    # (FROM HERE steps, objective ways, lines per objective): FROM HERE is what to do where Sam stands, so the
+    # objective's own ways and the checklist give way before any of its steps do.
     plans = [(3, 3, 2), (3, 2, 2), (3, 1, 2), (3, 1, 1), (3, 0, 1), (2, 0, 1), (1, 0, 1), (0, 0, 1)]
     for plan in plans:
         c.dry = True
@@ -628,58 +691,63 @@ def intel_tab(c, v, acc, H):
     intel_blocks(c, v, acc, *plan, limit=bottom)
 
 
-def intel_blocks(c, v, acc, steps, routes, obj_lines, limit=1e9):
-    y = 78
-    fa = c.f('B', 38, 700)                                                 # 1 area name + primaries
-    c.text(X0, y + 36, c.fit((v.room or 'UNKNOWN AREA').upper(), fa, 290, .05), fa, INK, track=.05)
-    if v.total:
-        fc, fl = c.f('B', 22, 700), c.f('B', 13.5, 700)
-        cw = c.text(X1, y + 26, '%d/%d' % (v.done, v.total), fc, INK, align='r')
-        c.text(X1 - cw - 8, y + 26, 'PRIMARIES', fl, MUTE, track=.16, align='r')
-        n = min(v.total, 8)
-        seg = min(30.0, (120 - (n - 1) * 4) / n)
-        x = X1 - n * seg - (n - 1) * 4
-        for i in range(n):
-            c.rect(x, y + 34, x + seg, y + 37, fill=rgba(acc) if i < v.done else rgba(WHITE, .2))
-            x += seg + 4
-    y = next_plate(c, v, y + 52, 2, route=True) + 14                       # 2 NEXT (+ rooms to go through)
-    if v.here:                                                             # 3 FROM HERE plate
-        o, inner = Ops(c), X1 - X0 - 32
-        fl, fg, fs, fn = c.f('B', 13.5, 700), c.f('S', 19, 600), c.f('S', 16), c.f('B', 13, 700)
-        o.text(X0 + 16, y + 26, 'FROM HERE  \u00b7  ' + (v.room or '').upper(), fl, acc, track=.16)
-        b = y + 54
+def here_plate(c, v, acc, y, steps):
+    """FROM HERE, the hero of INTEL: the exact area Sam is in, its goal and the steps, on the live-colour plate.
+    Returns the bottom edge."""
+    o, inner = Ops(c), X1 - X0 - 36
+    fl, fg, fs, fn = c.f('B', 13.5, 700), c.f('S', 21, 600), c.f('S', 16.5), c.f('B', 13.5, 700)
+    lw = c.w('FROM HERE', fl, .16)
+    o.text(X0 + 18, y + 27, 'FROM HERE', fl, acc, track=.16)
+    o.text(X0 + 30 + lw, y + 27, c.fit(v.room.upper(), fl, inner - lw - 12, .16), fl, INK, track=.16)
+    if not v.here:
+        o.text(X0 + 18, y + 56, 'No field notes for this area. Head for the objective.', c.f('S', 16), MUTE)
+        h = 76
+    else:
+        b = y + 61
         goal = c.wrap(v.here['next'], fg, inner, 2)
         for i, line in enumerate(goal):
-            o.text(X0 + 16, b + i * 25, line, fg, INK)
-        b += (len(goal) - 1) * 25 + 30
-        for i, way in enumerate(v.here['ways'][:steps]):
-            ls = c.wrap(way, fs, inner - 30, 4)  # never cut an instruction mid-sentence (2 of 470 need a 4th line)
-            o.rect(X0 + 16, b - 15, X0 + 36, b + 5, outline=rgba(acc, .8), width=1)
-            o.text(X0 + 26, b, str(i + 1), fn, acc, align='m')
+            o.text(X0 + 18, b + i * 27, line, fg, INK)
+        b += (len(goal) - 1) * 27 + 36
+        ways = v.here['ways'][:steps]
+        for i, way in enumerate(ways):
+            ls = c.wrap(way, fs, inner - 34, 4)  # never cut an instruction mid-sentence
+            o.rect(X0 + 18, b - 16, X0 + 40, b + 6, fill=rgba(acc, .16), outline=rgba(acc, .9), width=1)
+            o.text(X0 + 29, b + 0.5, str(i + 1), fn, acc, align='m')
             for j, line in enumerate(ls):
-                o.text(X0 + 46, b + j * 22, line, fs, INK)
-            b += len(ls) * 22 + 6
-        bottom_y = b - 22 - 6 + 18 if steps and v.here['ways'] else b - 30 + 18
-        c.plate(X0, y, X1, bottom_y, WHITE, .08, .045, cut=10, mark=acc)
-        o.flush()
-        y = bottom_y + 16
-    if v.note:                                                             # 4 FOR THE OBJECTIVE (no plate)
-        fl, fw, fr, fn = c.f('B', 13.5, 700), c.f('S', 15), c.f('S', 15), c.f('B', 14, 700)
-        c.text(X0, y + 14, 'FOR THE OBJECTIVE', fl, BLUE, track=.16)
+                o.text(X0 + 52, b + j * 23, line, fs, INK)
+            b += len(ls) * 23 + 9
+        h = (b - 9 - 23 if ways else b - 36) + 21 - y
+    c.plate(X0, y, X1, y + h, acc, .15, .05, cut=12, mark=acc)
+    o.flush()
+    return y + h
+
+
+def intel_blocks(c, v, acc, steps, routes, obj_lines, limit=1e9):
+    y = next_plate(c, v, 78, 2, route=True) + 12                          # 1 the objective: where to go
+    if v.room:                                                             # 2 FROM HERE: what to do right here
+        y = here_plate(c, v, acc, y, steps) + 18
+    if v.note:                                                             # 3 the objective's own ways (blue rule)
+        fl, fw, fr, fn = c.f('B', 13.5, 700), c.f('S', 15.5), c.f('S', 15), c.f('B', 14, 700)
+        top = y
+        c.text(X0 + 14, y + 14, 'FOR THE OBJECTIVE', fl, BLUE, track=.16)
         b = y + 38
-        where = c.wrap(v.note['where'], fw, X1 - X0, 2)
+        where = c.wrap(v.note['where'], fw, X1 - X0 - 14, 2)
         for i, line in enumerate(where):
-            c.text(X0, b + i * 21, line, fw, BRIGHT)
-        b += (len(where) - 1) * 21 + 27
+            c.text(X0 + 14, b + i * 21, line, fw, BRIGHT)
+        b += (len(where) - 1) * 21 + 26
         for i, way in enumerate(v.note['ways'][:routes]):
-            ls = c.wrap(way, fr, X1 - X0 - 24, 4)
-            c.text(X0 + 4, b, str(i + 1), fn, BLUE)
+            ls = c.wrap(way, fr, X1 - X0 - 38, 4)
+            c.text(X0 + 16, b, str(i + 1), fn, BLUE)
             for j, line in enumerate(ls):
-                c.text(X0 + 24, b + j * 21, line, fr, SOFT)
+                c.text(X0 + 38, b + j * 21, line, fr, SOFT)
             b += len(ls) * 21 + 6
-        y = b - 21 - 6 + 18 if routes and v.note['ways'] else b - 27 + 14
-    fl = c.f('B', 13.5, 700)                                               # 5 OBJECTIVES
+        end = b - 21 - 6 if routes and v.note['ways'] else b - 26
+        c.rect(X0, top + 2, X0 + 2, end + 6, fill=rgba(BLUE, .55))
+        y = end + 22
+    fl = c.f('B', 13.5, 700)                                               # 4 checklist + fail rule
     lw = c.text(X0, y + 16, 'OBJECTIVES', fl, MUTE, track=.16)
+    if v.total:
+        lw += 10 + c.text(X0 + lw + 10, y + 16, '%d/%d' % (v.done, v.total), c.f('B', 14, 700), INK)
     chip_x0 = X1
     if v.fail:
         fs = c.f('S', 15)
@@ -910,8 +978,10 @@ def view(panel, fns):
     v.done, v.total = sum(1 for r in v.must if r[1] == 1), len(v.must)
     v.nxt = panel.next_objective() if (panel.intel and panel.objs) else None
     v.has_dist = v.here_flag = False
+    v.next_tag = None
     if v.nxt:
         v.next_title = panel.objective_title(v.nxt, 200)
+        v.next_tag = v.nxt.get('base', v.nxt['label']) + ('  +%d' % v.nxt['extra'] if v.nxt.get('extra') else '')
         v.here_flag = panel.in_area(v.nxt)
         v.dist, bearing, dz = fns.relative(intel['sam'], v.nxt['loc'])
         clock = int(round(bearing / 30)) % 12 or 12
