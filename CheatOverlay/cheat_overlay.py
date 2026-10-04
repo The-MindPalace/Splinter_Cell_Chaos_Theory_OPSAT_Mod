@@ -18,7 +18,10 @@ Usage:  pythonw cheat_overlay.py           (normal)
         python  cheat_overlay.py --log     (also prints state changes)
 """
 import ctypes, ctypes.wintypes as wt, math, struct, sys, time, tkinter as tk
-from layered import PilCanvas, LayeredWindow, InputBox, gradient
+from types import SimpleNamespace
+
+import hud
+from layered import LayeredWindow, InputBox
 
 EXE = 'splintercell3.exe'
 
@@ -595,23 +598,7 @@ def game_window(pid):
     return found[0] if found else None
 
 
-def make_click_through(win):
-    win.update_idletasks()
-    hwnd = u32.GetParent(win.winfo_id()) or win.winfo_id()
-    ex = u32.GetWindowLongW(hwnd, -20)
-    u32.SetWindowLongW(hwnd, -20, ex | 0x80000 | 0x20 | 0x80 | 0x08000000)  # layered, transparent, toolwindow, noactivate
-
-
 VK_LEFT, VK_UP, VK_RIGHT, VK_DOWN, VK_INSERT = 0x25, 0x26, 0x27, 0x28, 0x2D
-
-
-def clean_reply(text):
-    """Strip markdown the model sometimes adds and collapse blank lines - chat lines stay compact."""
-    import re
-    text = re.sub(r'\*\*|__|`', '', text)
-    text = re.sub(r'</?telemetry>', '', text)
-    text = re.sub(r'(?m)^\s*#+\s*', '', text)
-    return re.sub(r'\n\s*\n+', '\n', text).strip()
 
 
 def dock(hwnd):
@@ -626,6 +613,20 @@ def dock(hwnd):
     chat_h = int(H * 0.28)
     top = bottom - chat_h
     return x, top, bottom, w, top - r.top - int(H * 0.06), sc
+
+
+def ease(t, x1=.2, y1=.8, x2=.2, y2=1.0):
+    """CSS cubic-bezier(.2, .8, .2, 1) - the spec's motion curve."""
+    if t <= 0 or t >= 1:
+        return min(1.0, max(0.0, t))
+    u = t
+    for _ in range(8):  # solve x(u) = t (Newton)
+        x = 3 * (1 - u) ** 2 * u * x1 + 3 * (1 - u) * u * u * x2 + u ** 3 - t
+        dx = 3 * (1 - u) ** 2 * x1 + 6 * (1 - u) * u * (x2 - x1) + 3 * u * u * (1 - x2)
+        if abs(dx) < 1e-6:
+            break
+        u = min(1.0, max(0.0, u - x / dx))
+    return 3 * (1 - u) ** 2 * u * y1 + 3 * (1 - u) * u * u * y2 + u ** 3
 
 
 def force_foreground(hwnd):
@@ -718,23 +719,13 @@ def facing(src_loc, src_yaw, cone, rng, dst_loc):
 
 
 class Opsat:
-    """OPSAT V1.2: one panel, bottom-left, two tabs.
+    """OPSAT V1.2 panel (HUD spec round 3): docked bottom-left, three tabs DVORAK - RADAR - INTEL.
 
-    TERMINAL  live next moves + DVORAK.     RADAR  objectives on top, the radar below.
-    Up arrow slides it up (like a phone), Down slides it away, Left/Right switch tabs, Insert asks DVORAK."""
-    # Palette
-    INK = '#eef4ef'        # primary text
-    SOFT = '#b9c7bd'       # body text
-    MUTE = '#76877c'       # labels, hints
-    FAINT = '#ffffff14'    # hairlines
-    CARD = '#ffffff0c'     # card fill
-    GREEN = '#8ff0a4'      # accent
-    BLUE = '#86cdfa'       # objectives / navigation
-    UI = 'Bahnschrift SemiCondensed'   # headings, labels, numbers
-    BODY = 'Segoe UI'                  # anything you read: replies, ways, objectives
-    MONO = 'Consolas'
-    TABS = ('DVORAK', 'INTEL', 'RADAR')
-    SLIDE_S = 0.24
+    Up opens it, always on RADAR; Down closes; Left/Right move one tab (no wrap); Insert opens DVORAK and
+    focuses the input. Drawing lives in hud.py; this class holds state, keys and motion."""
+    INK, SOFT, MUTE, GREEN, BLUE = hud.INK, hud.SOFT, hud.MUTE, hud.GREEN, hud.BLUE  # HUD strip colours
+    TABS = ('DVORAK', 'RADAR', 'INTEL')
+    SLIDE_S, RESIZE_S = 0.34, 0.32   # spec motion: slide 340 ms, height 320 ms, cubic-bezier(.2, .8, .2, 1)
     HERE = __import__('os').path.dirname(__import__('os').path.abspath(__file__))
 
     def __init__(self, root):
@@ -746,11 +737,13 @@ class Opsat:
         self.walk = {k.lower(): v for k, v in load('walkthrough.json')['missions'].items()}
         self.events = __import__('collections').deque(maxlen=30)  # (time, text) things Sam triggered
         self.lw = LayeredWindow(root)
-        self.canvas = PilCanvas()
+        self.fns = SimpleNamespace(relative=relative, guard_mood=guard_mood, facing=facing, range_m=RANGE_M,
+                                   uu_per_m=UU_PER_M)
+        self.entry_spec = None   # hud's description of the input box while typing
         self.input = InputBox(root, lambda text: self.submit(), lambda: self.stop_typing())
         self.entry = self.input.entry
         self.open = self.shown = False
-        self.tab = 1  # INTEL
+        self.tab = 1  # RADAR
         self.mission_id = self.room = None
         self.objs, self.room_names = [], []
         self.intel = None
@@ -760,12 +753,12 @@ class Opsat:
         self.dvorak_online = self.dvorak_busy = False
         self.bond_info = None
         self.on_submit = None
+        self.on_error = None    # logger for drawing errors (a paint bug must never take memory reading down)
         self.game = self.game_hwnd = None
         self.anchor, self.size, self.scale = None, (560, 640), 1.0
-        self.img = None
+        self.img = self.full = None   # frame on screen / last paint at the tab's full height
         self.slide = (0.0, 0.0, 0.0)  # (start time, from, to) of the open/close animation
         self.resize = None            # (start time, from height, to height) when switching tabs
-        self.full_h = None
         self.closing = False
 
     # --- state ---------------------------------------------------------------
@@ -863,14 +856,6 @@ class Opsat:
     def ways_for(self, nxt=None):
         return (self.note_for(nxt) or {}).get('ways', [])
 
-    def numbered(self, c, items, x, y, width, px, font, colour, gap=4):
-        """Numbered list with wrapped lines indented under the text, not the number."""
-        for i, text in enumerate(items, 1):
-            c.create_text(x, y, anchor='nw', text=str(i), fill=self.MUTE, font=font)
-            t = c.create_text(x + px(20), y, anchor='nw', text=text, fill=colour, width=width - px(20), font=font)
-            y = c.bbox(t)[3] + px(gap)
-        return y
-
     def next_moves(self):
         """(where/progress line, next line, moves, fail rule) - the live 'what now', no AI involved."""
         must = [r for r in self.objective_rows() if r[2] in (0, 3)]
@@ -890,8 +875,9 @@ class Opsat:
         return now, (done, len(must)), nxt_line, moves, (fail[0] if fail else None)
 
     # --- keys ----------------------------------------------------------------
-    def show_panel(self):
+    def show_panel(self, tab='RADAR'):
         if not self.open or self.closing:
+            self.tab = self.TABS.index(tab)  # opening always lands on RADAR (Insert lands on DVORAK)
             self.open, self.closing = True, False
             self.slide = (time.monotonic(), 0.0, 1.0)
             if self.game_hwnd:  # place now, not on the next tick, so the slide starts on the key press
@@ -905,19 +891,23 @@ class Opsat:
 
     def step_tab(self, d):
         if self.open and not self.closing:
-            self.tab = (self.tab + d) % len(self.TABS)
-            self.start_resize()
-            self.render()
+            tab = max(0, min(len(self.TABS) - 1, self.tab + d))  # stops at the ends
+            if tab != self.tab:
+                self.tab = tab
+                self.start_resize()
+                self.render()
 
     def target_height(self):
-        # RADAR is a compact panel so the game stays visible; DVORAK and INTEL keep the full height.
-        return int(self.full_h * (0.8 if self.TABS[self.tab] == 'RADAR' else 1.0))
+        # RADAR 560 x 616 so the game stays visible; DVORAK and INTEL 560 x 770 (at 1080p)
+        return int((hud.H_RADAR if self.TABS[self.tab] == 'RADAR' else hud.H_FULL) * self.scale)
 
     def start_resize(self):
-        if not (self.full_h and self.shown):
+        if not self.shown:
             return
         h1 = self.target_height()
-        if h1 != self.size[1] and not (self.resize and self.resize[2] == h1):
+        if h1 == self.size[1]:
+            self.resize = None
+        elif not (self.resize and self.resize[2] == h1):
             self.resize = (time.monotonic(), self.size[1], h1)
 
     def start_typing(self):
@@ -952,11 +942,14 @@ class Opsat:
                 self.input.hide()
                 self.shown = False
             return
-        x, chat_top, bottom, w, _, sc = dock(hwnd)
-        self.full_h = (bottom - chat_top) / 0.28 * 0.66
+        r = wt.RECT()
+        u32.GetWindowRect(hwnd, ctypes.byref(r))  # docked to the frame's bottom-left corner, grows upward
+        x, bottom, sc = r.left, r.bottom, max(0.8, (r.bottom - r.top) / 1080)
+        w = int(hud.WIDTH * sc)
         if self.shown and (x, bottom) == self.anchor and w == self.size[0]:
             self.start_resize()  # same spot: glide to the tab's height instead of jumping
             return
+        self.scale = sc
         size = (w, self.target_height())
         if (x, bottom) != self.anchor or size != self.size or not self.shown:
             if not self.shown and not self.closing:
@@ -967,23 +960,20 @@ class Opsat:
     def progress(self):
         t0, a, b = self.slide
         t = min(1.0, (time.monotonic() - t0) / self.SLIDE_S)
-        e = 1 - (1 - t) ** 3  # ease-out
-        return a + (b - a) * e, t >= 1.0
+        return a + (b - a) * ease(t), t >= 1.0
 
     def animate(self):
-        """Called every frame while sliding; returns True while the animation is still running."""
+        """Called every frame while sliding or gliding; returns True while an animation is still running."""
         resizing = False
         if self.resize:
             t0, h0, h1 = self.resize
-            t = min(1.0, (time.monotonic() - t0) / 0.2)
-            self.size = (self.size[0], int(h0 + (h1 - h0) * (1 - (1 - t) ** 3)))
+            t = min(1.0, (time.monotonic() - t0) / self.RESIZE_S)
+            self.size = (self.size[0], int(round(h0 + (h1 - h0) * ease(t))))
             self.resize = None if t >= 1 else self.resize
             resizing = self.resize is not None
-            self.render()
         p, finished = self.progress()
-        if self.img is not None and self.shown:
-            x, bottom = self.anchor
-            self.lw.show(self.img, x, bottom - int(self.size[1] * p))
+        if self.full is not None and self.shown:
+            self.compose()
         if finished and self.closing:
             self.open = self.closing = False
             self.lw.hide()
@@ -991,352 +981,45 @@ class Opsat:
             self.shown = False
         return resizing or not finished
 
-    # --- drawing -------------------------------------------------------------
+    # --- drawing (hud.py) -----------------------------------------------------
     def render(self):
         if not (self.open and self.shown and self.anchor):
             return
-        c = self.canvas
-        c.delete('all')
-        W, H = self.size
-        px = lambda v: int(v * self.scale)
-        pad = px(20)
-        font = lambda size, bold=False: (self.UI, px(size), 'bold') if bold else (self.UI, px(size))
-        self.body = lambda size, bold=False: (self.BODY, px(size), 'bold') if bold else (self.BODY, px(size))
-
-        # Header: wordmark, then the tab switcher on the right.
-        c.create_line(1, px(10), 1, H - px(10), fill=self.GREEN, width=2)
-        t = c.create_text(pad, px(16), text='OPSAT', anchor='nw', fill=self.INK, font=font(15, True))
-        v = c.create_text(c.bbox(t)[2] + px(6), px(20), text='V1.2', anchor='nw', fill=self.MUTE, font=font(8, True))
-        x = c.bbox(v)[2] + px(16)
-        for label, on, colour in (('GOD', self.cheats[0], self.GREEN), ('INVIS', self.cheats[1], self.BLUE)):
-            t2 = c.create_text(x + px(8), px(19), text=label, anchor='nw', fill='#06100c' if on else self.MUTE,
-                               font=font(8, True))
-            x0, y0, x1, y1 = c.bbox(t2)
-            c.create_rectangle(x0 - px(7), y0 - px(4), x1 + px(7), y1 + px(4), radius=px(8),
-                               fill=colour if on else '', outline='' if on else '#ffffff26')
-            c.tag_raise(t2)
-            x = x1 + px(14)
-        x = W - pad
-        for i in reversed(range(len(self.TABS))):
-            active = i == self.tab
-            t = c.create_text(x - px(10), px(19), text=self.TABS[i], anchor='ne', fill=self.INK if active else self.MUTE,
-                              font=font(9, True))
-            x0, y0, x1, y1 = c.bbox(t)
-            if active:
-                c.create_rectangle(x0 - px(10), y0 - px(5), x1 + px(10), y1 + px(5), fill='#8ff0a426', outline='',
-                                   radius=px(9))
-                c.tag_raise(t)
-            x = x0 - px(14)
-        c.create_line(pad, px(48), W - pad, px(48), fill=self.FAINT)
-        top, width = px(60), W - 2 * pad
-        getattr(self, 'draw_' + self.TABS[self.tab].lower())(c, top, pad, width, H, px, font)
-        hint = ('ENTER send     ESC cancel' if self.typing else
-                '▲ ▼  open / close      ◀ ▶  tab      INS  ask DVORAK')
-        c.create_text(pad, H - px(24), anchor='nw', fill=self.MUTE, font=font(8), text=hint)
-        self.compose()
+        # Mid-glide, paint the final height once; compose() folds it to each in-between height (60 fps even on
+        # INTEL, whose paint is too slow to redo every frame).
+        try:
+            self.full, self.entry_spec = hud.paint(self, self.fns, self.resize[2] if self.resize else None)
+            self.compose()
+        except Exception as e:
+            if self.on_error:
+                self.on_error(e)
 
     def compose(self):
+        """Put the last paint on screen at the current height and slide offset, with the input over its plate."""
         W, H = self.size
         x, bottom = self.anchor
-        self.img = self.canvas.render(W, H, gradient(W, H, left=0.90, right=0.62, colour=(4, 10, 8), fade_from=0.55))
-        rect = self.canvas.window_rect()
-        if self.typing and rect:
-            self.img.paste((0, 0, 0, 0), (rect[0], rect[1], rect[0] + rect[2], rect[1] + rect[3]))
+        img = hud.fold(self.full, H, self.scale)
+        spec = self.entry_spec if self.typing else None
+        if spec:  # cut the input area out of the panel so the Tk entry underneath shows at full strength
+            rx, ry, rw, rh = spec.rect
+            ry += H - self.full.height  # the body is pinned to the bottom while gliding
+            img.paste((0, 0, 0, 0), (rx, ry, rx + rw, ry + rh))
         p, _ = self.progress()
-        self.lw.show(self.img, x, bottom - int(H * p))
-        if self.typing and rect:
+        top = bottom - int(H * p)
+        self.img = img
+        self.lw.show(img, x, top)
+        if spec:
             first = not self.input.win.winfo_viewable()
-            self.input.show(x + rect[0], bottom - H + rect[1], rect[2], rect[3])
+            self.input.style(spec.bg, spec.fg, spec.caret, spec.font, spec.masked)
+            self.input.show(x + rx, top + ry, rw, rh)
             if first:  # the input line just appeared: give it the keyboard
                 force_foreground(self.input.hwnd())
                 self.entry.focus_force()
-        elif not self.typing:
+        elif self.input.placed:
             self.input.hide()
-
-    def card(self, c, x, y, w, h, px, colour=None):
-        c.create_rectangle(x, y, x + w, y + h, fill=colour or self.CARD, outline='', radius=px(8))
-
-    def draw_next(self, c, top, pad, width, H, px, font):
-        # NEXT MOVES card: where you are, progress, the next objective and what you can do there.
-        if self.mission_id:
-            now, (done, total), nxt_line, moves, warn = self.next_moves()
-            ids = []
-            y = top + px(12)
-            t = c.create_text(pad + px(14), y, anchor='nw', text=now.upper(), fill=self.INK, font=font(13, True))
-            ids.append(t)
-            c.create_text(pad + width - px(14), y + px(2), anchor='ne', text='%d / %d PRIMARIES' % (done, total),
-                          fill=self.GREEN if total and done == total else self.MUTE, font=font(9, True))
-            y = c.bbox(t)[3] + px(4)
-            if nxt_line:
-                t = c.create_text(pad + px(14), y, anchor='nw', text='NEXT  ' + nxt_line, fill=self.BLUE,
-                                  width=width - px(28), font=font(11, True))
-                y = c.bbox(t)[3] + px(3)
-            y += px(4)
-            here = self.here_note()
-            if here:  # what to do in the area Sam is standing in right now
-                t = c.create_text(pad + px(14), y, anchor='nw', fill=self.GREEN, font=font(8, True),
-                                  text='FROM HERE  \u00b7  ' + (self.room or '').replace('_', ' ').upper())
-                y = c.bbox(t)[3] + px(3)
-                t = c.create_text(pad + px(14), y, anchor='nw', text=here['next'], fill=self.INK,
-                                  width=width - px(28), font=self.body(11, True))
-                y = self.numbered(c, here['ways'][:4], pad + px(14), c.bbox(t)[3] + px(4), width - px(28), px,
-                                  self.body(11), self.SOFT)
-                y += px(6)
-            note = self.note_for(self.next_objective()) if nxt_line else None
-            ways = note['ways'] if note else ([] if here else moves)
-            if ways:
-                t = c.create_text(pad + px(14), y, anchor='nw', fill=self.BLUE, font=font(8, True),
-                                  text='FOR THE OBJECTIVE' if here else 'WAYS THROUGH')
-                y = c.bbox(t)[3] + px(3)
-                if note:
-                    t = c.create_text(pad + px(14), y, anchor='nw', text=note['where'], fill=self.MUTE,
-                                      width=width - px(28), font=self.body(10))
-                    y = c.bbox(t)[3] + px(4)
-                y = self.numbered(c, ways, pad + px(14), y, width - px(28), px, self.body(10 if here else 11),
-                                  self.MUTE if here else self.SOFT)
-            if warn:
-                t = c.create_text(pad + px(14), y + px(3), anchor='nw', text=warn, fill=RED, width=width - px(28),
-                                  font=font(9, True))
-                y = c.bbox(t)[3] + px(2)
-            bottom_card = y + px(12)
-            self.card(c, pad, top, width, bottom_card - top, px)
-            c.tag_lower(c.items[-1]['id'])
-            top = bottom_card + px(14)
-        return top
-
-    def draw_intel(self, c, top, pad, width, H, px, font):
-        if not self.mission_id:
-            c.create_text(pad, top, anchor='nw', text='Intel comes online in a mission.', fill=self.MUTE, font=font(10))
-            return
-        self.draw_objectives(c, self.draw_next(c, top, pad, width, H, px, font), pad, width, px, font)
-
-    def draw_dvorak(self, c, top, pad, width, H, px, font):
-        # DVORAK header.
-        on = self.dvorak_online
-        c.create_oval(pad, top + px(5), pad + px(7), top + px(12), fill=self.GREEN if on else RED, outline='')
-        c.create_text(pad + px(14), top, anchor='nw', text='DVORAK', fill=self.INK, font=font(10, True))
-        c.create_text(pad + px(66), top + px(1), anchor='nw', text='online' if on else 'offline - INS to add key',
-                      fill=self.MUTE, font=font(9))
-        if self.bond_info:
-            name, lvl, total = self.bond_info
-            c.create_text(pad + width, top + px(1), anchor='ne', text=name.title(), fill=self.MUTE, font=font(9))
-        top += px(24)
-
-        # Messages, newest at the bottom; older DVORAK replies collapse to one line.
-        input_h = px(34)
-        bottom = H - px(36) - input_h - px(8)
-        last_dvorak = max((i for i, (w, _) in enumerate(self.chat) if w == 'dvorak'), default=-1)
-        rows = []
-        for i, (who, msg) in enumerate(self.chat):
-            if who == 'dvorak':
-                body = clean_reply(msg)
-                if i != last_dvorak:
-                    first = body.split('\n')[0]
-                    rows.append(('DVORAK', self.MUTE, (first[:90] + ' …') if len(first) > 90 or '\n' in body else first,
-                                 self.MUTE))
-                    continue
-                if self.dvorak_busy and i == len(self.chat) - 1:
-                    body = (body + ' ▌') if body else 'thinking' + '.' * (int(time.monotonic() * 3) % 4)
-                rows.append(('DVORAK', self.GREEN, body, self.INK))
-            elif who == 'fisher':
-                rows.append(('FISHER', self.BLUE, msg, self.SOFT))
-            else:
-                rows.append(('', None, msg, self.MUTE))
-        y, placed = bottom, []
-        for name, ncol, body, bcol in reversed(rows):
-            items = []
-            if name:
-                items.append(c.create_text(pad, 0, anchor='nw', text=name, fill=ncol, font=font(8, True)))
-            b = c.create_text(pad, px(15) if name else 0, anchor='nw', text=body, fill=bcol, width=width,
-                              font=self.body(12) if name == 'DVORAK' and bcol == self.INK else self.body(10))
-            items.append(b)
-            h = c.bbox(b)[3]
-            if y - h < top:
-                for it in items:
-                    c.delete(it)
-                break
-            y -= h + px(12)
-            placed.append((items, y))
-        for items, yy in placed:
-            for it in items:
-                c.move(it, 0, yy)
-
-        # Input field.
-        iy = H - px(36) - input_h
-        self.card(c, pad, iy, width, input_h, px, '#ffffff10')
-        if self.typing:
-            c.create_text(pad + px(12), iy + px(9), anchor='nw', text='KEY' if self.key_mode else 'ASK',
-                          fill=AMBER if self.key_mode else self.GREEN, font=font(9, True))
-            c.create_window(pad + px(48), iy + px(4), anchor='nw', window=self.entry, width=width - px(56),
-                            height=input_h - px(8))
-        else:
-            c.create_text(pad + px(12), iy + px(9), anchor='nw', fill=self.MUTE, font=font(10),
-                          text='Ask DVORAK  ·  press INS' if on else 'Press INS and paste your Anthropic API key')
-
-    def draw_objectives(self, c, top, pad, width, px, font):
-        rows = self.objective_rows()
-        must = [r for r in rows if r[2] in (0, 3)]
-        extra = [r for r in rows if r[2] not in (0, 3) and r[1] == 0]
-        # Objectives: primaries with live ticks.
-        c.create_text(pad, top, anchor='nw', text='OBJECTIVES', fill=self.MUTE, font=font(8, True))
-        c.create_text(pad + width, top, anchor='ne', fill=self.MUTE, font=font(8, True),
-                      text='%d / %d' % (sum(1 for r in must if r[1] == 1), len(must)))
-        y = top + px(18)
-        if not rows:
-            t = c.create_text(pad, y, anchor='nw', text='They appear after the briefing.', fill=self.MUTE, font=font(10))
-            y = c.bbox(t)[3] + px(6)
-        for title, st, ty in must:
-            cy = y + px(8)
-            if st == 1:
-                c.create_oval(pad, cy - px(5), pad + px(10), cy + px(5), fill=self.GREEN, outline='')
-            elif st == 2:
-                c.create_oval(pad, cy - px(5), pad + px(10), cy + px(5), fill='', outline=GREY, width=px(2))
-            else:
-                c.create_oval(pad, cy - px(5), pad + px(10), cy + px(5), fill='', outline=self.SOFT, width=px(2))
-            t = c.create_text(pad + px(20), y, anchor='nw', text=title, width=width - px(20),
-                              fill=self.MUTE if st else self.INK, font=self.body(10))
-            y = c.bbox(t)[3] + px(4)
-        if extra:
-            t = c.create_text(pad + px(20), y, anchor='nw', fill=self.MUTE, font=font(9),
-                              text='+ %d optional: %s' % (len(extra), '; '.join(r[0].rstrip('.') for r in extra[:2])),
-                              width=width - px(20))
-            y = c.bbox(t)[3] + px(4)
-        fail = self.rules.get((self.mission_id or '').lower(), {}).get('fail', [])
-        if fail:
-            t = c.create_text(pad + px(20), y + px(2), anchor='nw', text='FAILS IF  ' + fail[0], fill=RED,
-                              width=width - px(20), font=font(9, True))
-            y = c.bbox(t)[3] + px(4)
-        return y
-
-    def draw_radar(self, c, top, pad, width, H, px, font):
-        intel = self.intel
-        y = top
-        if not intel:
-            c.create_text(pad, y, anchor='nw', text='Radar comes online in the mission.', fill=self.MUTE, font=font(10))
-            return
-        sam = intel['sam']
-        # NEXT card.
-        nxt = self.next_objective()
-        if nxt:
-            dist, bearing, dz = relative(sam, nxt['loc'])
-            clock = int(round(bearing / 30)) % 12 or 12
-            level = '' if abs(dz) < 2.5 else '   %.0fm %s' % (abs(dz), 'up' if dz > 0 else 'down')
-            path = self.route_to(nxt) or []
-            self.card(c, pad, y, width, px(58), px, '#86cdfa1c')
-            c.create_text(pad + px(14), y + px(9), anchor='nw', text='NEXT', fill=self.BLUE, font=font(8, True))
-            c.create_text(pad + px(14), y + px(24), anchor='nw', text=self.objective_title(nxt, 44), fill=self.INK, font=font(14, True))
-            here = self.in_area(nxt)
-            c.create_text(pad + width - px(14), y + px(8), anchor='ne', text='HERE' if here else '%.0fm' % dist,
-                          fill=self.BLUE, font=font(17, True))
-            c.create_text(pad + width - px(14), y + px(34), anchor='ne', fill=self.MUTE, font=font(9),
-                          text='in this area' if here else "%d o'clock%s" % (clock, level))
-            y += px(64)
-            if len(path) > 1:
-                t = c.create_text(pad, y, anchor='nw', fill=self.BLUE, font=font(9), width=width,
-                                  text=' \u203a '.join(r.replace('_', ' ') for r in path))
-                y = c.bbox(t)[3] + px(4)
-            here = self.here_note()
-            if here:
-                t = c.create_text(pad, y, anchor='nw', fill=self.INK, font=self.body(10), width=width,
-                                  text='Here: ' + here['next'])
-                y = c.bbox(t)[3] + px(6)
-        # The radar fills what is left, with the threat counts underneath.
-        strip_h = px(40)
-        R = max(px(60), min(width / 2, (H - px(40) - strip_h - y - px(8)) / 2))
-        cx, cy = pad + width / 2, y + R
-        k = R / RANGE_M
-        c.create_oval(cx - R, cy - R, cx + R, cy + R, fill='#ffffff08', outline='#ffffff1c')
-        for frac in (0.6, 0.25):
-            c.create_oval(cx - R * frac, cy - R * frac, cx + R * frac, cy + R * frac, outline='#ffffff12')
-        c.create_line(cx - R, cy, cx + R, cy, fill='#ffffff0a')
-        c.create_line(cx, cy - R, cx, cy + R, fill='#ffffff0a')
-        c.create_text(cx + px(4), cy - R + px(3), text='%dm' % RANGE_M, anchor='nw', fill='#ffffff40', font=font(7))
-
-        def to_screen(loc):
-            dist, bearing, dz = relative(sam, loc)
-            b = math.radians(bearing)
-            return cx + math.sin(b) * dist * k, cy - math.cos(b) * dist * k, dist, bearing, dz
-
-        def cone(xs, ys, yaw, cone_deg, rng_uu, colour):
-            heading = (yaw - sam[1]) / 65536 * 360
-            r = min(rng_uu / UU_PER_M, CONE_M) * k
-            c.create_arc(xs - r, ys - r, xs + r, ys + r, start=90 - heading - cone_deg / 2, extent=cone_deg,
-                         fill=colour + '30', outline=colour + '90')
-
-        off_states = ('s_Deactivated', 's_Malfunctioning', 's_Destructed', 's_Off', 's_Idle')
-        cams = 0
-        for snr in intel['sensors']:
-            xs, ys, dist, _, dz = to_screen(snr['loc'])
-            if dist > RANGE_M:
-                continue
-            off = snr['state'] in off_states
-            col = GREY if off else (RED if snr['state'] == 's_Alert' else AMBER)
-            if not off:
-                cams += 1
-                cone(xs, ys, snr['yaw'], snr['cone'], snr['range'], col)
-            c.create_rectangle(xs - px(4), ys - px(4), xs + px(4), ys + px(4), fill=col, outline='', radius=px(2))
-        moods, facing_me = [], 0
-        for g in intel['guards']:
-            xs, ys, dist, bearing, dz = to_screen(g['loc'])
-            mood, col = guard_mood(g)
-            if mood in ('DEAD', 'OUT'):
-                if dist <= RANGE_M:
-                    c.create_oval(xs - px(3), ys - px(3), xs + px(3), ys + px(3), fill='#ffffff30', outline='')
-                continue
-            moods.append(mood)
-            sees = abs(dz) < 2.5 and facing(g['loc'], g['yaw'], g['cone'], g['range'], sam[0])
-            facing_me += sees and dist < 25
-            if dist > RANGE_M:
-                continue
-            cone(xs, ys, g['yaw'], g['cone'], g['range'], col if mood != 'CALM' else '#8ff0a4')
-            r = px(5)
-            c.create_oval(xs - r, ys - r, xs + r, ys + r, fill=col if abs(dz) < 2.5 else '', outline=col, width=px(2))
-        for ob in self.visible_markers():
-            if self.in_area(ob):  # exact spot unknown: no blip rather than a wrong one
-                continue
-            xs, ys, dist, bearing, dz = to_screen(ob['loc'])
-            is_next = nxt is not None and ob['label'] == nxt['label']
-            tag = ob.get('base', ob['label'])
-            if dist <= RANGE_M:
-                q = px(7) if is_next else px(5)
-                c.create_polygon(xs, ys - q, xs + q, ys, xs, ys + q, xs - q, ys, fill=self.BLUE if is_next else '',
-                                 outline=self.BLUE, width=px(2))
-                left = xs > cx + R * 0.25  # keep the label inside the circle
-                c.create_text(xs - q - px(4) if left else xs + q + px(4), ys, anchor='e' if left else 'w', text=tag,
-                              fill=self.BLUE if is_next else '#86cdfab0', font=self.body(9, is_next))
-            else:
-                b = math.radians(bearing)
-                sb = math.sin(b)  # label just inside the rim, growing inward so it never leaves the circle
-                lx, ly = cx + sb * (R - px(16)), cy - math.cos(b) * (R - px(20))
-                c.create_text(lx, ly, anchor='e' if sb > 0.35 else 'w' if sb < -0.35 else 'center',
-                              text='%s  %.0fm' % (tag, dist),
-                              fill=self.BLUE if is_next else '#86cdfa90', font=self.body(9, is_next))
-                b = math.radians(bearing)
-                ex, ey = cx + math.sin(b) * (R - px(6)), cy - math.cos(b) * (R - px(6))
-                if is_next:
-                    tip = (ex + math.sin(b) * px(8), ey - math.cos(b) * px(8))
-                    l = (ex + math.sin(b + 2.3) * px(7), ey - math.cos(b + 2.3) * px(7))
-                    rr = (ex + math.sin(b - 2.3) * px(7), ey - math.cos(b - 2.3) * px(7))
-                    c.create_polygon(*tip, *l, *rr, fill=self.BLUE, outline='')
-                else:
-                    c.create_oval(ex - px(3), ey - px(3), ex + px(3), ey + px(3), fill='#86cdfa80', outline='')
-        c.create_polygon(cx, cy - px(9), cx - px(6), cy + px(6), cx, cy + px(3), cx + px(6), cy + px(6),
-                         fill=self.INK, outline='')
-        # Threat counts.
-        y = cy + R + px(10)
-        alarm = intel.get('alarm') or 0
-        cells = [('ALARM', alarm, RED), ('ALERT', moods.count('ALERT'), RED), ('SUSPICIOUS', moods.count('SUSPICIOUS'), AMBER),
-                 ('FACING YOU', facing_me, AMBER), ('CAMERAS', cams, AMBER)]
-        cw = width / len(cells)
-        for i, (label, value, col) in enumerate(cells):
-            x0 = pad + i * cw
-            c.create_text(x0, y, anchor='nw', text=str(value), fill=col if value else self.SOFT, font=font(14, True))
-            c.create_text(x0, y + px(20), anchor='nw', text=label, fill=self.MUTE, font=font(7, True))
 
 
 class Overlay:
-    KEY = '#010203'  # transparent colour
-
     def __init__(self, log):
         self.log = log
         # Small diagnostics log next to the script (restarted each run).
@@ -1348,19 +1031,15 @@ class Overlay:
         self.mem = self.game = None
         self.last = None
         self.root = tk.Tk()
-        self.root.overrideredirect(True)
-        self.root.attributes('-topmost', True, '-transparentcolor', self.KEY, '-alpha', 0.92)
-        self.root.configure(bg=self.KEY)
-        self.canvas = tk.Canvas(self.root, bg=self.KEY, highlightthickness=0, width=320, height=120)
-        self.canvas.pack()
-        make_click_through(self.root)
-        self.root.withdraw()
+        self.root.withdraw()  # never shown: everything on screen is a layered window
+        self.strip = LayeredWindow(self.root)  # closed-panel HUD: cheats, worst threat, the 'press up' notice
+        self.strip_img, self.strip_ver, self.strip_at = None, 0, None
         self.shown = False
-        self.hud_h = 1
         self.panel = Opsat(self.root)
         from dvorak import Dvorak, mission_briefing, save_key
         self.dvorak, self.mission_briefing, self.dvorak_save_key = Dvorak(), mission_briefing, save_key
         self.panel.on_submit = self.ask_dvorak
+        self.panel.on_error = self.panel_error
         self.panel.dvorak_online = self.dvorak.online
         self.queued = []        # questions typed while DVORAK was still answering
         self.key_asked = False  # asked for the API key this run
@@ -1373,9 +1052,17 @@ class Overlay:
         self.root.after(0, self.animate)
 
     def animate(self):
-        """Slide frames for the open/close animation (~60 fps only while sliding)."""
-        busy = self.panel.animate() if (self.panel.open and self.panel.shown) else False
+        """Slide and glide frames (~60 fps only while moving). Always reschedules, even after an error."""
+        busy = False
+        try:
+            busy = self.panel.animate() if (self.panel.open and self.panel.shown) else False
+        except Exception as e:
+            self.panel_error(e)
         self.root.after(15 if busy else 60, self.animate)
+
+    def panel_error(self, e):
+        import traceback
+        self.say('panel error:', e, '|', ' / '.join(l.strip() for l in traceback.format_exc().splitlines()[-4:-1]))
 
     def poll_keys(self):
         """Hotkeys for the hint panel, only while the game window is in front."""
@@ -1396,8 +1083,11 @@ class Overlay:
 
     def talk(self):
         panel = self.panel
-        panel.tab = panel.TABS.index('DVORAK')
-        panel.show_panel()
+        if panel.open and not panel.closing:
+            panel.tab = panel.TABS.index('DVORAK')
+            panel.start_resize()
+        else:
+            panel.show_panel('DVORAK')
         panel.render()
         panel.start_typing()
 
@@ -1595,9 +1285,11 @@ class Overlay:
         if snap['alarm'] is not None and old['alarm'] is not None and snap['alarm'] != old['alarm']:
             ev.append(('ALARM STAGE %d' % snap['alarm'], RED if snap['alarm'] > old['alarm'] else Opsat.GREEN))
         if snap['alert'] > old['alert']:
-            ev.append(('%d guard(s) went ALERT' % (snap['alert'] - old['alert']), RED))
+            n = snap['alert'] - old['alert']
+            ev.append(('%d guard%s went alert' % (n, '' if n == 1 else 's'), RED))
         if snap['down'] > old['down']:
-            ev.append(('%d guard(s) down' % (snap['down'] - old['down']), Opsat.MUTE))
+            n = snap['down'] - old['down']
+            ev.append(('%d guard%s down' % (n, '' if n == 1 else 's'), Opsat.MUTE))
         if room and old['room'] and room != old['room']:
             panel.events.append((time.time(), 'entered ' + room.replace('_', ' ')))
         recent = {e for t, e in panel.events if time.time() - t < 120}
@@ -1623,33 +1315,20 @@ class Overlay:
             return ('GUARD SUSPICIOUS  %.0fm' % min(susp), AMBER)
         return alarm
 
-    def draw(self, toast, threat=None, cheats=(False, False)):
-        """HUD strip (bottom-left): GOD / INVISIBLE, the worst live threat and the one-time ready notice."""
-        c = self.canvas
-        c.delete('all')
-        y = 0
-        rows = [('GOD MODE', Opsat.GREEN)] * cheats[0] + [('INVISIBLE', Opsat.BLUE)] * cheats[1]
+    def draw(self, toast, threat=None, cheats=(False, False), sc=1.0):
+        """HUD strip (bottom-left, panel closed): the worst live threat, GOD / INVISIBLE, the one-time notice."""
+        rows = [('GOD MODE', hud.GREEN)] * cheats[0] + [('INVISIBLE', hud.BLUE)] * cheats[1]
         if threat:
             rows.insert(0, threat)
         if toast:
-            rows.append(('OPSAT V1.2   \u25b2 to open', Opsat.GREEN))
-        for text, colour in rows:
-            t = c.create_text(16, y + 16, text=text, fill=colour, anchor='w', font=(Opsat.UI, 14, 'bold'))
-            x1 = c.bbox(t)[2] + 12
-            c.create_rectangle(0, y, x1, y + 32, fill='#050805', outline='')
-            c.create_line(0, y, 0, y + 32, fill=colour, width=3)
-            for yy in (y, y + 31):
-                c.create_line(0, yy, 10, yy, fill=colour)
-                c.create_line(x1 - 10, yy, x1, yy, fill=colour)
-            c.create_line(x1, y, x1, y + 32, fill=colour)
-            c.tag_raise(t)
-            y += 38
-        self.hud_h = max(1, y - 6)
+            rows.append(('OPSAT V1.2   \u25b2 TO OPEN', hud.GREEN))
+        self.strip_img = hud.strip(rows, sc)
+        self.strip_ver += 1
 
     def hide(self):
         if self.shown:
-            self.root.withdraw()
-            self.shown = False
+            self.strip.hide()
+            self.shown, self.strip_at = False, None
 
     def detach(self):
         if self.mem:
@@ -1730,20 +1409,20 @@ class Overlay:
                      '| objectives', [(o[0], o[1]) for o in objs])
         self.panel.place(hwnd, self.game_fg or self.panel.typing)
         toast = time.monotonic() < self.toast_until
-        if (toast, threat, cheats) != self.hud:
-            self.hud = (toast, threat, cheats)
-            self.draw(toast, threat, cheats)
+        sc = dock(hwnd)[5] if hwnd else 1.0
+        if (toast, threat, cheats, sc) != self.hud:
+            self.hud = (toast, threat, cheats, sc)
+            self.draw(toast, threat, cheats, sc)
             if threat:
                 self.say('threat:', threat[0])
-        want = (toast or threat or any(cheats)) and self.game_fg and not self.panel.open
+        want = self.strip_img is not None and self.game_fg and not self.panel.open
         if want:
             dx, _, bottom = dock(hwnd)[:3]
-            self.canvas.config(height=self.hud_h)
-            self.root.geometry('320x%d+%d+%d' % (self.hud_h, dx, bottom - self.hud_h))
-            if not self.shown:
-                self.root.deiconify()
-                self.root.attributes('-topmost', True)
-                self.shown = True
+            at = (self.strip_ver, dx, bottom)
+            if at != self.strip_at:  # only push pixels when the strip or the game window changed
+                self.strip_at = at
+                self.strip.show(self.strip_img, dx, bottom - self.strip_img.height)
+            self.shown = True
         else:
             self.hide()
         return POLL_MS

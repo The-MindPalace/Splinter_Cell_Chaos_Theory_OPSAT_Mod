@@ -4,3 +4,7 @@ overlay.log
 # Third-party mods are fetched by the installer from their official releases
 mods/*.zip
 mods/*.dll
+
+# local secrets - never commit
+api_key.txt
+*.key
