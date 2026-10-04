@@ -675,7 +675,15 @@ def pretty(name):
     return re.sub(r'(?<=[a-z])(?=[A-Z0-9])', ' ', name).upper()
 
 
-def merge_markers(obs):
+def short_title(title, limit=34):
+    """'Authorize the vault access from three officers' panels.' -> 'Authorize the vault access from three…'"""
+    title = title.strip().rstrip('.')
+    if len(title) <= limit:
+        return title
+    return title[:limit].rsplit(' ', 1)[0].rstrip(',;:') + '…'
+
+
+def merge_markers(obs, name=pretty):
     """Pending beacons, with ones at the same spot (within 3 m) merged: 'INFO / MONEY'."""
     out = []
     for ob in obs:
@@ -683,10 +691,11 @@ def merge_markers(obs):
             continue
         for o in out:
             if math.dist(o['loc'], ob['loc']) < 3 * UU_PER_M:
-                o['label'] += ' / ' + pretty(ob['name'])
+                o['extra'] = o.get('extra', 0) + 1  # 'Steal the bonds  +1' rather than two long titles
+                o['label'] = o['base'] + '  +%d' % o['extra']
                 break
         else:
-            out.append(dict(ob, label=pretty(ob['name'])))
+            out.append(dict(ob, label=name(ob), base=name(ob)))
     return out
 
 
@@ -755,6 +764,8 @@ class Opsat:
         self.anchor, self.size, self.scale = None, (560, 640), 1.0
         self.img = None
         self.slide = (0.0, 0.0, 0.0)  # (start time, from, to) of the open/close animation
+        self.resize = None            # (start time, from height, to height) when switching tabs
+        self.full_h = None
         self.closing = False
 
     # --- state ---------------------------------------------------------------
@@ -786,12 +797,32 @@ class Opsat:
         primaries_left = not rows or any(st == 0 and ty in (0, 3) for _, st, ty in rows)
         ids = {o[2]: (o[1], o[4]) for o in self.objs}
         out = []
-        for ob in merge_markers((self.intel or {}).get('objectives') or []):
+        for ob in merge_markers((self.intel or {}).get('objectives') or [], self.marker_name):
             status, otype = ids.get(ob['objective'], (0, 0))
             if status == 0 and not (ob['label'].startswith('EXTRACT') and primaries_left):
                 ob['primary'] = otype in (0, 3)
                 out.append(ob)
         return out
+
+    def objective_key(self, ob):
+        return next((o[0] for o in self.objs if o[2] == ob.get('objective')), None)
+
+    def marker_name(self, ob):
+        """Short radar name ('Vault panels') from walkthrough.json, else the objective's own title shortened -
+        never the beacon's internal id ('Objectif0')."""
+        key = self.objective_key(ob)
+        note = ((self.walkthrough() or {}).get('objectives') or {}).get(key) if key else None
+        if note and note.get('tag'):
+            return note['tag']
+        sect = self.section()
+        return short_title(sect[key]) if key and sect.get(key) else pretty(ob.get('name'))
+
+    def objective_title(self, ob, limit=60):
+        """Full objective title for the NEXT line (game text), '+N' when markers share the spot."""
+        key = self.objective_key(ob)
+        title = self.section().get(key) if key else None
+        base = short_title(title, limit) if title else ob.get('base', ob['label'])
+        return base + ('  +%d' % ob['extra'] if ob.get('extra') else '')
 
     def next_objective(self):
         """Story order (the game lists objectives as they unlock), nearest beacon breaks ties."""
@@ -825,6 +856,10 @@ class Opsat:
             keys = [o[0] for o in self.objs if o[1] == 0 and o[4] in (0, 3)]
         return next((notes[k] for k in keys if k in notes), None)
 
+    def here_note(self):
+        """Room notes (hints.json) for the 3D-map area Sam is in: {'next', 'ways'}."""
+        return ((self.mission() or {}).get('rooms') or {}).get(self.room or '')
+
     def ways_for(self, nxt=None):
         return (self.note_for(nxt) or {}).get('ways', [])
 
@@ -846,7 +881,7 @@ class Opsat:
             path = self.route_to(nxt) or []
             via = ('  via ' + ' › '.join(r.replace('_', ' ') for r in path[1:3])) if len(path) > 1 else ''
             dist = 'in this area' if self.in_area(nxt) else '%.0fm' % relative(self.intel['sam'], nxt['loc'])[0]
-            nxt_line = '%s   %s%s' % (nxt['label'], dist, via)
+            nxt_line = '%s   %s%s' % (self.objective_title(nxt), dist, via)
         else:  # no map marker: name the first pending primary instead
             pending = [r[0] for r in must if r[1] == 0]
             nxt_line = 'Get to extraction' if must and done == len(must) else (pending[0] if pending else '')
@@ -871,7 +906,19 @@ class Opsat:
     def step_tab(self, d):
         if self.open and not self.closing:
             self.tab = (self.tab + d) % len(self.TABS)
+            self.start_resize()
             self.render()
+
+    def target_height(self):
+        # RADAR is a compact panel so the game stays visible; DVORAK and INTEL keep the full height.
+        return int(self.full_h * (0.8 if self.TABS[self.tab] == 'RADAR' else 1.0))
+
+    def start_resize(self):
+        if not (self.full_h and self.shown):
+            return
+        h1 = self.target_height()
+        if h1 != self.size[1] and not (self.resize and self.resize[2] == h1):
+            self.resize = (time.monotonic(), self.size[1], h1)
 
     def start_typing(self):
         if not self.open or self.TABS[self.tab] != 'DVORAK' or self.typing:
@@ -906,9 +953,11 @@ class Opsat:
                 self.shown = False
             return
         x, chat_top, bottom, w, _, sc = dock(hwnd)
-        full = (bottom - chat_top) / 0.28 * 0.66
-        # RADAR is a compact panel so the game stays visible; DVORAK and INTEL keep the full height.
-        size = (w, int(full * (0.6 if self.TABS[self.tab] == 'RADAR' else 1.0)))
+        self.full_h = (bottom - chat_top) / 0.28 * 0.66
+        if self.shown and (x, bottom) == self.anchor and w == self.size[0]:
+            self.start_resize()  # same spot: glide to the tab's height instead of jumping
+            return
+        size = (w, self.target_height())
         if (x, bottom) != self.anchor or size != self.size or not self.shown:
             if not self.shown and not self.closing:
                 self.slide = (time.monotonic(), 0.0, 1.0)  # first frame on screen: start the slide here
@@ -923,6 +972,14 @@ class Opsat:
 
     def animate(self):
         """Called every frame while sliding; returns True while the animation is still running."""
+        resizing = False
+        if self.resize:
+            t0, h0, h1 = self.resize
+            t = min(1.0, (time.monotonic() - t0) / 0.2)
+            self.size = (self.size[0], int(h0 + (h1 - h0) * (1 - (1 - t) ** 3)))
+            self.resize = None if t >= 1 else self.resize
+            resizing = self.resize is not None
+            self.render()
         p, finished = self.progress()
         if self.img is not None and self.shown:
             x, bottom = self.anchor
@@ -932,7 +989,7 @@ class Opsat:
             self.lw.hide()
             self.input.hide()
             self.shown = False
-        return not finished
+        return resizing or not finished
 
     # --- drawing -------------------------------------------------------------
     def render(self):
@@ -982,9 +1039,11 @@ class Opsat:
         W, H = self.size
         x, bottom = self.anchor
         self.img = self.canvas.render(W, H, gradient(W, H, left=0.90, right=0.62, colour=(4, 10, 8), fade_from=0.55))
+        rect = self.canvas.window_rect()
+        if self.typing and rect:
+            self.img.paste((0, 0, 0, 0), (rect[0], rect[1], rect[0] + rect[2], rect[1] + rect[3]))
         p, _ = self.progress()
         self.lw.show(self.img, x, bottom - int(H * p))
-        rect = self.canvas.window_rect()
         if self.typing and rect:
             first = not self.input.win.winfo_viewable()
             self.input.show(x + rect[0], bottom - H + rect[1], rect[2], rect[3])
@@ -1012,16 +1071,29 @@ class Opsat:
                 t = c.create_text(pad + px(14), y, anchor='nw', text='NEXT  ' + nxt_line, fill=self.BLUE,
                                   width=width - px(28), font=font(11, True))
                 y = c.bbox(t)[3] + px(3)
-            note = self.note_for(self.next_objective()) if nxt_line else None
-            if note:
-                t = c.create_text(pad + px(14), y, anchor='nw', text=note['where'], fill=self.MUTE,
-                                  width=width - px(28), font=self.body(10))
+            y += px(4)
+            here = self.here_note()
+            if here:  # what to do in the area Sam is standing in right now
+                t = c.create_text(pad + px(14), y, anchor='nw', fill=self.GREEN, font=font(8, True),
+                                  text='FROM HERE  \u00b7  ' + (self.room or '').replace('_', ' ').upper())
                 y = c.bbox(t)[3] + px(3)
-            y += px(3)
-            if moves:
-                t = c.create_text(pad + px(14), y, anchor='nw', fill=self.MUTE, font=font(8, True), text='WAYS THROUGH')
-                y = c.bbox(t)[3] + px(4)
-            y = self.numbered(c, moves, pad + px(14), y, width - px(28), px, self.body(11), self.SOFT)
+                t = c.create_text(pad + px(14), y, anchor='nw', text=here['next'], fill=self.INK,
+                                  width=width - px(28), font=self.body(11, True))
+                y = self.numbered(c, here['ways'][:4], pad + px(14), c.bbox(t)[3] + px(4), width - px(28), px,
+                                  self.body(11), self.SOFT)
+                y += px(6)
+            note = self.note_for(self.next_objective()) if nxt_line else None
+            ways = note['ways'] if note else ([] if here else moves)
+            if ways:
+                t = c.create_text(pad + px(14), y, anchor='nw', fill=self.BLUE, font=font(8, True),
+                                  text='FOR THE OBJECTIVE' if here else 'WAYS THROUGH')
+                y = c.bbox(t)[3] + px(3)
+                if note:
+                    t = c.create_text(pad + px(14), y, anchor='nw', text=note['where'], fill=self.MUTE,
+                                      width=width - px(28), font=self.body(10))
+                    y = c.bbox(t)[3] + px(4)
+                y = self.numbered(c, ways, pad + px(14), y, width - px(28), px, self.body(10 if here else 11),
+                                  self.MUTE if here else self.SOFT)
             if warn:
                 t = c.create_text(pad + px(14), y + px(3), anchor='nw', text=warn, fill=RED, width=width - px(28),
                                   font=font(9, True))
@@ -1152,7 +1224,7 @@ class Opsat:
             path = self.route_to(nxt) or []
             self.card(c, pad, y, width, px(58), px, '#86cdfa1c')
             c.create_text(pad + px(14), y + px(9), anchor='nw', text='NEXT', fill=self.BLUE, font=font(8, True))
-            c.create_text(pad + px(14), y + px(24), anchor='nw', text=nxt['label'], fill=self.INK, font=font(14, True))
+            c.create_text(pad + px(14), y + px(24), anchor='nw', text=self.objective_title(nxt, 44), fill=self.INK, font=font(14, True))
             here = self.in_area(nxt)
             c.create_text(pad + width - px(14), y + px(8), anchor='ne', text='HERE' if here else '%.0fm' % dist,
                           fill=self.BLUE, font=font(17, True))
@@ -1162,6 +1234,11 @@ class Opsat:
             if len(path) > 1:
                 t = c.create_text(pad, y, anchor='nw', fill=self.BLUE, font=font(9), width=width,
                                   text=' \u203a '.join(r.replace('_', ' ') for r in path))
+                y = c.bbox(t)[3] + px(4)
+            here = self.here_note()
+            if here:
+                t = c.create_text(pad, y, anchor='nw', fill=self.INK, font=self.body(10), width=width,
+                                  text='Here: ' + here['next'])
                 y = c.bbox(t)[3] + px(6)
         # The radar fills what is left, with the threat counts underneath.
         strip_h = px(40)
@@ -1219,11 +1296,21 @@ class Opsat:
                 continue
             xs, ys, dist, bearing, dz = to_screen(ob['loc'])
             is_next = nxt is not None and ob['label'] == nxt['label']
+            tag = ob.get('base', ob['label'])
             if dist <= RANGE_M:
                 q = px(7) if is_next else px(5)
                 c.create_polygon(xs, ys - q, xs + q, ys, xs, ys + q, xs - q, ys, fill=self.BLUE if is_next else '',
                                  outline=self.BLUE, width=px(2))
+                left = xs > cx + R * 0.25  # keep the label inside the circle
+                c.create_text(xs - q - px(4) if left else xs + q + px(4), ys, anchor='e' if left else 'w', text=tag,
+                              fill=self.BLUE if is_next else '#86cdfab0', font=self.body(9, is_next))
             else:
+                b = math.radians(bearing)
+                sb = math.sin(b)  # label just inside the rim, growing inward so it never leaves the circle
+                lx, ly = cx + sb * (R - px(16)), cy - math.cos(b) * (R - px(20))
+                c.create_text(lx, ly, anchor='e' if sb > 0.35 else 'w' if sb < -0.35 else 'center',
+                              text='%s  %.0fm' % (tag, dist),
+                              fill=self.BLUE if is_next else '#86cdfa90', font=self.body(9, is_next))
                 b = math.radians(bearing)
                 ex, ey = cx + math.sin(b) * (R - px(6)), cy - math.cos(b) * (R - px(6))
                 if is_next:
@@ -1381,10 +1468,10 @@ class Overlay:
                     dist, bearing, dz = relative(intel['sam'], ob['loc'])
                     clock = int(round(bearing / 30)) % 12 or 12
                     if ob.get('approx'):
-                        beacons.append((dist, '  %s: somewhere in %s (exact spot unknown)' % (pretty(ob['name']), ob['room'])))
+                        beacons.append((dist, '  %s: somewhere in %s (exact spot unknown)' % (panel.marker_name(ob), ob['room'])))
                         continue
                     beacons.append((dist, '  %s: ~%.0fm at %d o\'clock%s' % (
-                        pretty(ob['name']), dist, clock, '' if abs(dz) < 2.5 else ' (%.0fm %s)' % (abs(dz), 'up' if dz > 0 else 'down'))))
+                        panel.marker_name(ob), dist, clock, '' if abs(dz) < 2.5 else ' (%.0fm %s)' % (abs(dz), 'up' if dz > 0 else 'down'))))
             if beacons:
                 out.append('Objective beacons from the game\'s 3D map (approximate):')
                 out += [t for _, t in sorted(beacons)]
@@ -1464,6 +1551,13 @@ class Overlay:
                     panel.chat.pop()
                 panel.chat.append(['sys', 'DVORAK error: ' + text])
                 self.say('dvorak error:', text)
+                if 'key' in text.lower() and ('rejected' in text.lower() or 'permission' in text.lower()):
+                    panel.chat.append(['sys', 'DVORAK: That key does not work. Paste a working Anthropic API key '
+                                              '(Ctrl+V) and press ENTER. ESC to skip.'])
+                    panel.tab = panel.TABS.index('DVORAK')
+                    panel.start_resize()
+                    panel.key_mode = True
+                    panel.start_typing()
         on_terminal = panel.open and panel.TABS[panel.tab] == 'DVORAK'
         if on_terminal and mission and not self.dvorak.online and not self.key_asked and not panel.typing:
             self.key_asked = True

@@ -402,9 +402,9 @@ class InputBox:
         self.win = tk.Toplevel(root)
         self.win.overrideredirect(True)
         self.win.attributes('-topmost', True)
-        self.win.configure(bg='#0b1410')
-        self.entry = tk.Entry(self.win, bg='#0b1410', fg='#f2f5f0', insertbackground='#9fe08a', relief='flat',
-                              font=('Bahnschrift SemiCondensed', 12), highlightthickness=0, borderwidth=4)
+        self.win.configure(bg='#13201a')
+        self.entry = tk.Entry(self.win, bg='#13201a', fg='#ffffff', insertbackground='#8ff0a4', relief='flat',
+                              font=('Segoe UI', 12), highlightthickness=0, borderwidth=4)
         self.entry.pack(fill='both', expand=True)
         self.entry.bind('<Return>', lambda e: on_submit(self.entry.get()))
         self.entry.bind('<Escape>', lambda e: on_cancel())

@@ -17,7 +17,8 @@
       "Shoot the light at the top of the wet ramp, OCP the torture-room light and hide in the rubble niche on the left. The guards go up to look and you crouch in.",
       "Or wait in the dark: one guard walks up the ramp to the toilets, the other sits in the side office. Slip past or grab the seated one from behind.",
       "He can't be saved. Reaching him moves the mission on. Leave through the alcove at the back by the spotlight, then pick the courtyard door lock (don't break it)."
-     ]
+     ],
+     "tag": "Morgenholt"
     },
     "Objective_0001": {
      "where": "Server computer in the second tower, past the courtyards and the fireplace room.",
@@ -25,14 +26,16 @@
       "Short way: climb the big crate by the second tent, shimmy up the wall, sneak past the two resting by the fireplace and along the upper walkway.",
       "Low way: through the doorway under the bright light, past the tin-roof gazebo, then jump onto the roof and OCP the light over the far doorway to slip in.",
       "In the tower, grab and KO the man at the computer from behind, or ignore him, and use the computer. That wipes the data."
-     ]
+     ],
+     "tag": "Kernel data"
     },
     "Objective_0010": {
      "where": "Server computer in the second tower.",
      "ways": [
       "Climb the crate by the second tent and take the upper ledge past the fireplace room to the tower.",
       "Use the computer. The man at it can be grabbed from behind or left alone."
-     ]
+     ],
+     "tag": "Kernel data"
     },
     "Objective_0011": {
      "where": "Lighthouse ground floor: the radio room just inside the back door.",
@@ -40,7 +43,8 @@
       "Open the door slowly and let the radio operator talk. Grim picks the answer out of his call. Do not drop him before that.",
       "If he is down or saw you first, go up the first flight of stairs and search the small file cabinet.",
       "Outside guard: OCP the bulb on the lighthouse wall when he is not looking, then follow him round to the door."
-     ]
+     ],
+     "tag": "Arms source"
     },
     "Objective_0013": {
      "where": "Radio set in the lighthouse ground-floor room.",
@@ -48,13 +52,15 @@
       "After Grim's call about the Maria Narcissa, OCP the room light and grab the operator, or creep up behind him while he sits.",
       "Then shoot the radio with the pistol, or throw the bottle beside it.",
       "Door-bash: stay outside the closed door, thermal on, whistle, and bash it as he reaches it. Save first."
-     ]
+     ],
+     "tag": "Radio"
     },
     "Objective_0014": {
      "where": "Radio set in the lighthouse ground-floor room.",
      "ways": [
       "Take the operator quietly (OCP his light or grab him seated), then shoot or bottle the radio."
-     ]
+     ],
+     "tag": "Radio"
     },
     "Objective_0008": {
      "where": "Five gun crates along the route. EEV scans from cover.",
@@ -62,13 +68,15 @@
       "1 by the generator in the long barrel room. 2 in the target-practice room downstairs (scan it from the ladder dark).",
       "3 inside the second courtyard tent: cut the back cloth to get in. 4 under the tin-roof gazebo: scan it from the upper walkway.",
       "5 on the cannon terrace below the second tower: turn right among the cannons while the two guards talk."
-     ]
+     ],
+     "tag": "Gun crates"
     },
     "Objective_0005": {
      "where": "Not here. He left by boat an hour ago (the tent guard tells you).",
      "ways": [
       "Cancelled in this mission. He is on the Maria Narcissa next."
-     ]
+     ],
+     "tag": "Lacerda"
     },
     "Objective_0033": {
      "where": "Top of the lighthouse: lamp gallery.",
@@ -77,7 +85,8 @@
       "Or switch it off and wait inside. He comes back to relight it, so KO him from behind.",
       "Or tag him from the ladder with a sticky shocker or airfoil round."
      ],
-     "watch": "At the terrace stairs a guard may walk down to the cannon. Shoot the lamp on the left and let him settle facing away."
+     "watch": "At the terrace stairs a guard may walk down to the cannon. Shoot the lamp on the left and let him settle facing away.",
+     "tag": "Lighthouse top"
     }
    }
   },
@@ -92,7 +101,8 @@
       "Or clear the pump room: shoot the walkway bulb from the dark corner, KO the walkway guard back at his post, then take the tech away from the ladder.",
       "Then in the drained hold, climb the crates and scan the high crate with the red-tagged bill. The paper on the floor-level crate isn't it.",
       "Two guards come down the corridor after. Duck into the open vent under the walkway and let them pass."
-     ]
+     ],
+     "tag": "Bill of lading"
     },
     "Objective_0003": {
      "where": "Ship office, up the stairs from the crew quarters (past the engine room).",
@@ -101,7 +111,8 @@
       "Or kill the first room light at its switch, OCP the inner light. When the clerk gets up, KO him and use his computer or the file cabinet.",
       "Shoot the bulb outside the door first. The guard who checks it can be taken when he leans on the rail."
      ],
-     "watch": "Engine room: use the OCP only, no bullets. Jump-and-hide on the catwalk rails to pass the two guards."
+     "watch": "Engine room: use the OCP only, no bullets. Jump-and-hide on the catwalk rails to pass the two guards.",
+     "tag": "Transit ledger"
     },
     "Objective_0020": {
      "where": "The bridge, through the Deck 4 door at the top of the outside stairs.",
@@ -109,25 +120,29 @@
       "Open the Deck 4 door and step back down while they notice it. Then grab the helmsman and drag him out before the KO.",
       "Grab the captain from behind and interrogate him. He gives you the cabin.",
       "Or read the ship register in the computer room. From the Deck 4 door, hang below the rail and shimmy right, then go in the lit door and KO the man in the chair."
-     ]
+     ],
+     "tag": "Lacerda's cabin"
     },
     "Objective_0069": {
      "where": "The bridge (Deck 4).",
      "ways": [
       "Interrogate the captain on the bridge, or read the register in the computer room."
-     ]
+     ],
+     "tag": "Lacerda's cabin"
     },
     "Objective_0022": {
      "where": "The bridge (Deck 4).",
      "ways": [
       "Interrogate the captain on the bridge, or read the register in the computer room."
-     ]
+     ],
+     "tag": "Lacerda's cabin"
     },
     "Objective_0023": {
      "where": "The bridge (Deck 4).",
      "ways": [
       "Interrogate the captain on the bridge, or read the register in the computer room."
-     ]
+     ],
+     "tag": "Lacerda's cabin"
     },
     "Objective_0018": {
      "where": "Captain's cabin: down the bridge stairs, past the cabin with the loud music, right at the T, end on the right.",
@@ -135,20 +150,23 @@
       "Wait outside the kitchen door. After his talk he comes in for a drink. Grab him there; his guards will not notice.",
       "Back out of the cabin and down the stairs before you finish him.",
       "Interrogate him several times first for the bonus."
-     ]
+     ],
+     "tag": "Lacerda"
     },
     "Objective_0021": {
      "where": "Captain's cabin kitchen.",
      "ways": [
       "Grab him when he comes for a drink and interrogate him repeatedly before you finish him."
-     ]
+     ],
+     "tag": "Interrogate Lacerda"
     },
     "Objective_0008": {
      "where": "Overheard in Lacerda's cabin.",
      "ways": [
       "Stand in the cabin hall by the closed door and listen to the whole conversation before you move in.",
       "Missed it? There's a second chance in the Bank: the small computer room by the safety deposit boxes."
-     ]
+     ],
+     "tag": "Panama contact"
     },
     "Objective_0019": {
      "where": "Six crates along the route.",
@@ -157,7 +175,8 @@
       "3 at the foot of the outside stairs from the ship office. 4 on Deck 3 near the stairs down by the captain cabin.",
       "5 in the passage behind the Deck 2 galley: follow the guard who walks to the freezer, OCP the nearest light, tag it, get out.",
       "6 on the lower stern deck (three guards). Do it on the way to extraction: rope ladder near the Deck 5 ladder."
-     ]
+     ],
+     "tag": "Weapon crates"
     },
     "Objective_0006": {
      "where": "The ship's launch at the stern, top level.",
@@ -165,7 +184,8 @@
       "Leave the bridge by the door near the stairs, past the ladder, up the stairs to the ladder down. That skips the three Deck 5 guards.",
       "At the bottom, ignore the stern guards. Climb the short ladder and take the extraction prompt (weapon holstered).",
       "Want crate 6? Sticky-camera gas the two talkers from the walkway first, then the third with an airfoil round."
-     ]
+     ],
+     "tag": "Ship's launch"
     }
    }
   },
@@ -181,13 +201,15 @@
       "Roof: go down the right alley, OCP the high wall camera, jump to the ladder left of the fire exit. Break the shed lock, use the left computer to open a dome window, rope down.",
       "Front doors: pick the lock in the dark, OCP the camera over the desk, KO the desk guard. Only reaches reception if the glass doors are shut.",
       "On the rope: EEV one of the glowing cubicle computers and pick 'Deactivate Laser Grid'."
-     ]
+     ],
+     "tag": "Bank entrance"
     },
     "Objective_0040": {
      "where": "Roof skylight or front doors.",
      "ways": [
       "Right alley ladder to the roof, shed switch opens the dome, rope down; EEV a cubicle PC to drop the lasers."
-     ]
+     ],
+     "tag": "Bank entrance"
     },
     "Objective_0013": {
      "where": "Panels in the Treasurer's office (ground floor east), the 2F security office and the President's office.",
@@ -196,7 +218,8 @@
       "Security office (2F): code 2306, or the secret way: rear courtyard pipe, balcony crawl space, EEV the computer tower to stop the fan, drop in. Panel by the door.",
       "President: code 3490 (overheard in the rear courtyard) or hack it. Panel by the desk.",
       "Back down fast: out the President's window ledge to ledge. The crawl space under the courtyard camera leads into the Treasurer's office."
-     ]
+     ],
+     "tag": "Vault panels"
     },
     "Objective_0004": {
      "where": "File cabinet beside the desk in the Treasurer's office (ground floor east).",
@@ -204,7 +227,8 @@
       "Door code 8645, or listen to the guard working the keypad and use it after he leaves.",
       "Or crawl in from the rear courtyard through the wall vent. OCP the camera above it first.",
       "Search the cabinet next to the desk."
-     ]
+     ],
+     "tag": "Treasurer files"
     },
     "Objective_0008": {
      "where": "Eight computers: reception, two ground-floor booths, the 2F laser-room desk, the three panel offices, the vault.",
@@ -212,7 +236,8 @@
       "Reception: EEV the PC on the floor left of the desk from the dark. Both ground-floor booth PCs can be EEV-hacked through the windows (door code 3624).",
       "Upstairs: the desk in the first laser room, the security office, the President's office. Then the Treasurer's office.",
       "The vault computer finishes the set. Save before each hack; the EEV gives you less time than the keyboard."
-     ]
+     ],
+     "tag": "Fake emails"
     },
     "Objective_0017": {
      "where": "2F glass security office.",
@@ -220,28 +245,32 @@
       "Regular: past the laser rooms (carry the KO-d laser guard through the beams), code 2306, then wait for both to sit and drag them out one at a time.",
       "Secret: rear courtyard pipe, then the balcony crawl space over the fan room. EEV the tower to stop the fan, sticky-camera gas both guards, drop in.",
       "At the computer: disable the cameras and delete the archives."
-     ]
+     ],
+     "tag": "Camera archives"
     },
     "Objective_0033": {
      "where": "Safety deposit room, through the glass door by the three-man booth (it opens once all three panels are done).",
      "ways": [
       "Box 1024. Run along the rows until the open prompt shows, then take the gear.",
       "From upstairs, drop out of the President's window instead of the laser rooms. The glass door is near the Treasurer's office."
-     ]
+     ],
+     "tag": "Deposit box 1024"
     },
     "Objective_0035": {
      "where": "Main vault door, down the stairs past the deposit room.",
      "ways": [
       "Place the telemetric pick in one side lock, then lockpick the other.",
       "Pause after each tumbler and continue only when its light turns green."
-     ]
+     ],
+     "tag": "Vault locks"
     },
     "Objective_0037": {
      "where": "The main vault door wheel.",
      "ways": [
       "Place the charge on the centre of the door, back off until Detonate appears.",
       "Going in: OCP the camera at the far end of the vault."
-     ]
+     ],
+     "tag": "Vault charge"
     },
     "Objective_0002": {
      "where": "Cage at the back of the vault.",
@@ -250,7 +279,8 @@
       "Vault computer: open the cage, take the bonds. Lights-off and sprinklers are there if guards come.",
       "Leaving: thermal on and OCP one emitter of the beam across the vault door, then walk out before it returns.",
       "Or carry a guard's body through the beam. That has to be done before you pick up the bonds."
-     ]
+     ],
+     "tag": "Bearer bonds"
     },
     "Objective_0001": {
      "where": "Computer at the back of the main vault (the door opens with the gear from deposit box 1024).",
@@ -258,32 +288,37 @@
       "Vault still shut? Get box 1024 in the deposit room first (glass door by the three-man booth): the lock pick and the charge.",
       "At the door: telemetric pick in one side lock, lockpick the other, pausing on each tumbler until green. Charge on the wheel, detonate from a distance.",
       "Inside: OCP the camera at the far end, then use the computer at the back. Hack it too for the email set."
-     ]
+     ],
+     "tag": "Vault computer"
     },
     "Objective_0010": {
      "where": "Small room by the safety deposit box room entrance.",
      "ways": [
       "Use the computer in the little room next to the deposit boxes."
-     ]
+     ],
+     "tag": "Panama contact"
     },
     "Objective_0052": {
      "where": "Front wall where you started.",
      "ways": [
       "Leave by the EXIT door across from the closet on the ground floor, run the alley to the courtyard, and take the 'exfiltrate' prompt at the wall right of the gates.",
       "Guards still up front? Climb the pipe right of the front doors and zip across the courtyard."
-     ]
+     ],
+     "tag": "Extraction wall"
     },
     "Objective_0041": {
      "where": "Front wall where you started.",
      "ways": [
       "Fire exit, alley, courtyard wall right of the gates. The pipe and zip line right of the front doors skips the guards."
-     ]
+     ],
+     "tag": "Extraction wall"
     },
     "Objective_0043": {
      "where": "Front wall where you started.",
      "ways": [
       "Fire exit, alley, courtyard wall right of the gates. The pipe and zip line right of the front doors skips the guards."
-     ]
+     ],
+     "tag": "Extraction wall"
     }
    }
   },
@@ -299,7 +334,8 @@
       "High road: the ladder by the trash bags, up the fire escape, jump from the empty box to the ledge, shimmy left to the pipe and climb down by the door.",
       "Inside, wait for the tech to fix the elevator and ride up. Or slip in while he's at his toolbox, climb onto the car roof and take the long ladder (crouch as the car rises).",
       "Top floor: thermal-check the guard, OCP the light outside the elevator and the EXIT sign, take the stairs to the roof."
-     ]
+     ],
+     "tag": "Guard rooftop"
     },
     "Objective_0046": {
      "where": "Across the roof to the AXE sign, cables down to the penthouse balcony.",
@@ -307,13 +343,15 @@
       "Flip the light switch to the left to pull the helipad guards away. OCP the chopper spotlight, mantle the pipes, then OCP the AXE sign and climb the ladder beside it.",
       "Or go straight over the pipes across from the exit and stay dark, away from the helicopter.",
       "At the top, jump for the cables and slide over. On the penthouse ledge hang off the edge and shimmy right past the balcony guard, then climb up behind him."
-     ]
+     ],
+     "tag": "Penthouse"
     },
     "Objective_0035": {
      "where": "Across the roof to the AXE sign, cables down to the penthouse balcony.",
      "ways": [
       "Light switch on the left decoys the helipad guards. OCP the AXE sign, climb its ladder, take the cables, shimmy the ledge past the balcony guard."
-     ]
+     ],
+     "tag": "Penthouse"
     },
     "Objective_0003": {
      "where": "Any of the penthouse guards.",
@@ -321,20 +359,23 @@
       "Grab and interrogate the lower balcony guard once you climb up behind him.",
       "Or the guard napping by the computer past the kitchen (grab him standing).",
       "Or just listen: the two guards meeting on the patio talk about it."
-     ]
+     ],
+     "tag": "Merc employer"
     },
     "Objective_0001": {
      "where": "Computer next to the napping guard, lower floor past the unfinished kitchen.",
      "ways": [
       "From the elevator room, while the tech and guard argue, cut the hanging sheet by the balcony door, take the high crawl space, cross the kitchen.",
       "Hack the computer beside the sleeping guard. Then pick the locked door out."
-     ]
+     ],
+     "tag": "Floor plans"
     },
     "Objective_0032": {
      "where": "Computer next to the napping guard, lower floor.",
      "ways": [
       "Cut the sheet by the balcony door, crawl space, kitchen, then hack the computer by the sleeping guard."
-     ]
+     ],
+     "tag": "Floor plans"
     },
     "Objective_0002": {
      "where": "Six infrared cameras (night vision shows the beams). Walk under each and tap its cord.",
@@ -342,7 +383,8 @@
       "1: outside the napping guard room, at the foot of the stairs (OCP it, then climb). 2: the patio, behind the tree; the switch right of the glass door kills the lights.",
       "3 and 4: the living room (one in the small room on the right). 5: upstairs in the room with the computer screens.",
       "6: just left of the greenhouse door. The most often missed one."
-     ]
+     ],
+     "tag": "Cameras"
     },
     "Objective_0004": {
      "where": "Zherkezhi's hidden room upstairs: through the doorway left of the camera wall, then left down a narrow corridor.",
@@ -350,14 +392,16 @@
       "Kitchen guard: from the crawl-space nook, OCP the hanging light and take him. Pillar guard: OCP the hall light and whistle him over.",
       "OCP the stair camera, go up, slip under the room camera. Find the hidden door (walk along the closets / behind the bed) to the small room.",
       "Use that computer. It names Dvorak and gives door code 0280."
-     ]
+     ],
+     "tag": "Zherkezhi's server"
     },
     "Objective_0008": {
      "where": "Greenhouse guard, upper floor.",
      "ways": [
       "Optic-cable the greenhouse door and let the talk finish. One guard comes out, so hide in the corner past the camera.",
       "He stops to stare out of the big open window. Grab him there and interrogate him."
-     ]
+     ],
+     "tag": "Detail chief"
     },
     "Objective_0005": {
      "where": "The abandoned building across the sniper roof: through the guesthouse, then the door beside it.",
@@ -365,7 +409,8 @@
       "Back down the kitchen crawl space to the patio. OCP the music guard's light, slip round the wall, then take the door next to the guesthouse.",
       "On the roof: climb the pipe by the door and zip to the caged generator, switch it off. Or shoot the light over the far door. Snipers sit in the high windows.",
       "Next door: thermal, whistle, door-bash the guard. Left is the keypad (0280, or hack). Right is the sniper nest: disarm the wall mine on green, take the crawl space."
-     ]
+     ],
+     "tag": "Dvorak"
     },
     "Objective_0006": {
      "where": "Dvorak's machine room.",
@@ -373,13 +418,15 @@
       "Talk to the old man until he takes you to the machine, then again to get his help.",
       "Start the main server. Flip each of the three banks on the left as it lights (same order every time).",
       "Collect the output by the overhead light on the far side."
-     ]
+     ],
+     "tag": "Punch cards"
     },
     "Objective_0011": {
      "where": "Upstairs computer on the table in the camera-swept room.",
      "ways": [
       "OCP the room camera, cross, use the computer. Only needed if you missed the Treasurer cabinet in the Bank."
-     ]
+     ],
+     "tag": "Transaction records"
     },
     "Objective_0007": {
      "where": "The stuck elevator car between the penthouse floors.",
@@ -387,7 +434,8 @@
       "Back across the sniper roof while the patroller is away, through the guesthouse (light switch decoy), patio, kitchen crawl space.",
       "OCP the camera by the elevator nook, hop the metal beam onto the car roof, drop in and extract.",
       "Or the living-room bathroom crawl space comes out at the elevator."
-     ]
+     ],
+     "tag": "Elevator"
     }
    }
   },
@@ -400,7 +448,8 @@
      "where": "Whole mission.",
      "ways": [
       "Any death fails the mission. Knock out, never kill. Watch drops from heights, and do not leave KO-d guards where they can fall."
-     ]
+     ],
+     "tag": "No kills"
     },
     "Objective_0038": {
      "where": "The executive's laptop: the meeting room, then wherever the execs walk next.",
@@ -409,7 +458,8 @@
       "Lower floor: through the keypad door (8136), mantle over the rail by the LEVEL 1 sign and wait at the far end. EEV the laptop when he sets it down (stand, not crouched).",
       "Easiest: the same data sits on the gym computer at the back of the training gym (the tracer server). One hack does both.",
       "Upper door: hide behind it while one exec clears the window, then sticky-camera gas both execs and use the laptop."
-     ]
+     ],
+     "tag": "Server algorithm"
     },
     "Objective_0082": {
      "where": "Three division servers.",
@@ -417,13 +467,15 @@
       "1: Operations Room, the computer alone on the table on its top tier.",
       "2: training gym, the computer at the back of the computer half. Shimmy the overhead pipe to it.",
       "3: upstairs in R&D behind a keypad. Hack the keypad, or take the vent from the back of the turret range."
-     ]
+     ],
+     "tag": "Tracer servers"
     },
     "Objective_0011": {
      "where": "Operations Room, by the meeting room.",
      "ways": [
       "EEV-hack the rightmost computer against the back wall from the dark. It names Milan Nedich."
-     ]
+     ],
+     "tag": "Detail chief"
     },
     "Objective_0093": {
      "where": "R&D main room, lower floor: the left computer on the table by the windows.",
@@ -431,13 +483,15 @@
       "Into R&D: hack the retinal scanner and carry a KO-d guard through the lasers.",
       "Or the crawl space at the far end of the gym locker room into the R&D break room. Wait for the gamers to finish talking.",
       "EEV-hack the computer from the shadows if workers are still about."
-     ]
+     ],
+     "tag": "Turret reports"
     },
     "Objective_0092": {
      "where": "Not covered by any PC walkthrough. Likely unused in this build.",
      "ways": [
       "If it is live, check the R&D computers on the way to the server room."
-     ]
+     ],
+     "tag": "Infrasound specs"
     },
     "Objective_0039": {
      "where": "Main server room, reached through the R&D vents.",
@@ -446,7 +500,8 @@
       "Or the vent at the back of the turret range. OCP the room first.",
       "Rope down, start the server with the algorithm and read it. Then climb straight back up before the lights come on."
      ],
-     "watch": "Have the algorithm before you go."
+     "watch": "Have the algorithm before you go.",
+     "tag": "Central server"
     },
     "Objective_0125": {
      "where": "Level 3: the room with three frosted glass panels by its door.",
@@ -454,7 +509,8 @@
       "Stand at a frosted panel and point the EEV at it until it reads 'Recording'. Stay for the whole talk.",
       "Do not OCP the panels and do not just optic-cable it; neither counts.",
       "Missed it? Hokkaido gives a second chance: scan the car plates."
-     ]
+     ],
+     "tag": "Nedich identity"
     },
     "Objective_0094": {
      "where": "Milan Nedich's office in the executive wing on Level 3.",
@@ -462,31 +518,36 @@
       "Elevator to Level 3 (from the Level 2 lobby, or the server-room shortcut to Level 1). Two guards in the hall say a door code; sticky-camera gas them after.",
       "OCP the camera at the side-hall door, code 2346. The occupied office: whistle and door-bash, or interrogate him for the next code.",
       "Nedich office: code 2609 or hack it. Use the computer nearest the door."
-     ]
+     ],
+     "tag": "Nedich's office"
     },
     "Objective_0107": {
      "where": "Nedich's office, Level 3 executive wing.",
      "ways": [
       "Side-hall door 2346 (OCP the camera), Nedich office 2609; the computer nearest the door."
-     ]
+     ],
+     "tag": "Nedich's office"
     },
     "Objective_0008": {
      "where": "Fire stairs off the dark niche past the camera door on Level 3.",
      "ways": [
       "Back through the camera door (OCP it), find the fire door in the dark niche, code 3485 (from Nedich's computer), climb to the top."
-     ]
+     ],
+     "tag": "Fire stairs"
     },
     "Objective_0128": {
      "where": "Fire stairs, Level 3.",
      "ways": [
       "Camera door, dark niche, fire door 3485, up the stairs."
-     ]
+     ],
+     "tag": "Fire stairs"
     },
     "Objective_0131": {
      "where": "Fire stairs, Level 3.",
      "ways": [
       "Camera door, dark niche, fire door 3485, up the stairs."
-     ]
+     ],
+     "tag": "Fire stairs"
     }
    }
   },
@@ -500,7 +561,8 @@
       "Blow out the candle inside the dojo. Both car guards come in to look, so slip out the door or window and scan both plates.",
       "Or EEV-scan the plates from the dark.",
       "Or sticky-camera gas the two by the car and scan at leisure. Drag them into the dark alley right of the next building."
-     ]
+     ],
+     "tag": "Licence plates"
     },
     "Objective_0003": {
      "where": "Six mics behind scrolls or by the phones. Thermal or EMF shows them.",
@@ -508,7 +570,8 @@
       "1: big building, the mic hunter's room by the plant near the light. 2: dining area, wall right of the phone (the bathroom left crawl space to the kitchen gets you round).",
       "3: the bedroom beside Nedich's bathhouse room, corner by the phone. 4: TV room, wall left of the phone.",
       "5: the bedroom off the TV room, left of the bed by the door. 6: downstairs in the two-floor house past the glass door (the art studio), left of the big bed."
-     ]
+     ],
+     "tag": "Hidden mics"
     },
     "Objective_0001": {
      "where": "Bathhouse room off the hall from the golden Buddha.",
@@ -517,13 +580,15 @@
       "Nedich crosses to the tub room. Take the guard who stops inside the doorway (from behind, or an airfoil round as he turns).",
       "Shut the door, then grab Nedich through the paper wall where you see his shadow (weapon away). Back into the dark corner, interrogate, finish."
      ],
-     "watch": "Leave him alive and he turns up later in the car courtyard with guards."
+     "watch": "Leave him alive and he turns up later in the car courtyard with guards.",
+     "tag": "Nedich"
     },
     "Objective_0013": {
      "where": "Bathhouse, through the paper wall.",
      "ways": [
       "Grab him through the paper wall and interrogate him before you finish him."
-     ]
+     ],
+     "tag": "Interrogate Nedich"
     },
     "Objective_0012": {
      "where": "Teahouse: listen from the little roof across from it.",
@@ -531,20 +596,23 @@
       "TV room: OCP the TV and take the guard who comes to it. Then the glass-door house: kill the lights, take the two outside guards with non-lethal rounds.",
       "Upstairs broom closet with the curtain: the crawl space under the medkit puts you on the roof facing the teahouse.",
       "Stay on that roof and EEV the teahouse for the whole conversation."
-     ]
+     ],
+     "tag": "Teahouse meeting"
     },
     "Objective_0008": {
      "where": "Teahouse.",
      "ways": [
       "Scripted: Shetland kills him during the meeting. Recording that meeting is what counts."
-     ]
+     ],
+     "tag": "Zherkezhi"
     },
     "Objective_0006": {
      "where": "Teahouse, then the alley gate.",
      "ways": [
       "Scripted escape. Sticky-shock the guard below, drop down, through the teahouse sliding door near the left end.",
       "Go through the crouch hole and down the alley to the gate. He gets away by helicopter regardless."
-     ]
+     ],
+     "tag": "Shetland"
     },
     "Objective_0016": {
      "where": "The lake shore where you started.",
@@ -552,7 +620,8 @@
       "From the alley, shoot out the lantern by the fence gate, then the one outside the bright dojo. Slip through the dojo.",
       "Out the far side, down the rocks to the shore."
      ],
-     "watch": "Three new guards wait in the car courtyard on the way back."
+     "watch": "Three new guards wait in the car courtyard on the way back.",
+     "tag": "Lake shore"
     }
    }
   },
@@ -566,7 +635,8 @@
       "1: office area past the first warehouse, the enclosed side office. Kill the lights, grab the man at it, or EEV it through the blinds.",
       "2: the locked security office by the munitions warehouse stairs. Pick it and EEV the hard drive past the music listener.",
       "3: upper floor of the command center. 4: the control room under the West launcher (the computer the pacing guard sits at)."
-     ]
+     ],
+     "tag": "Shipping logs"
     },
     "Objective_0001": {
      "where": "Command center at the top of the elevator.",
@@ -574,7 +644,8 @@
       "Secret route: left of the elevator doors, shimmy up into the ceiling gap, bypass the panel on the car roof. From the fan room, the hidden ladder drops you behind the map displays.",
       "Or hack the elevator keypad, hide behind the boxes (OCP the car light). Follow the guard through the retinal doors after OCP-ing the camera.",
       "Listen to the commander and his men without interrupting. Missed it? A computer on the lower floor has it."
-     ]
+     ],
+     "tag": "Command center"
     },
     "Objective_0025": {
      "where": "Base commander's office, command center upper floor.",
@@ -582,14 +653,16 @@
       "Take the security-room guard in the hall, the upper-floor watcher, then the seated man below.",
       "Whistle from his doorway and step back down the stairs, then grab him when he turns. Or OCP his computer and shoot his light; he walks the whole floor.",
       "Interrogate, then KO."
-     ]
+     ],
+     "tag": "Base commander"
     },
     "Objective_0024": {
      "where": "The two missile storage bays behind the control rooms by the elevator.",
      "ways": [
       "OCP the bulb-shaped ceiling camera just past each control-room back door.",
       "Find the missile with its tip casing off and 'bypass circuit' on it. Left bay: the one on the forklift. Right bay: in view of the bulb camera."
-     ]
+     ],
+     "tag": "Missile bays"
     },
     "Objective_0015": {
      "where": "West launcher: through the left bay control room, right after the camera door, down to the lower track.",
@@ -597,45 +670,52 @@
       "Non-lethal round on the patroller through the half-open door. Touch the launcher, then go down to its control room.",
       "Far door: shoot the light over it, open, then sticky-shock the kneeling worker, then the chair guy. Or one sticky-camera gas when they are close.",
       "Bypass the circuit where the worker knelt, then use the computer at the back of the launcher."
-     ]
+     ],
+     "tag": "Launcher BIOS"
     },
     "Objective_0012": {
      "where": "West launcher.",
      "ways": [
       "Left bay, lower track, launcher control room (far door, light out), bypass the circuit, then the computer at the back of the launcher."
-     ]
+     ],
+     "tag": "Launcher BIOS"
     },
     "Objective_0016": {
      "where": "East launcher, through the right missile bay.",
      "ways": [
       "Through the right control room (OCP the door camera), deal with the new patroller, drop to the lower track.",
       "Bypass the box by the closed door. Save first; the timed sequence starts there and the missile launches anyway."
-     ]
+     ],
+     "tag": "East launcher"
     },
     "Objective_0036": {
      "where": "East launcher.",
      "ways": [
       "Right bay, lower track, bypass the box by the closed door (save first)."
-     ]
+     ],
+     "tag": "East launcher"
     },
     "Objective_0017": {
      "where": "Control room under the East launcher.",
      "ways": [
       "Run to the far control-room door and shoot out the light over it.",
       "Wait for the guard by the bank to sit, grab him from behind (no projectiles; the others hear), and use his computer."
-     ]
+     ],
+     "tag": "Abort codes"
     },
     "Objective_0018": {
      "where": "Main control room of the East (right) missile bay.",
      "ways": [
       "Run back, OCP the camera over the bay door, and enter the codes on the left computer facing the window."
-     ]
+     ],
+     "tag": "Abort terminal"
     },
     "Objective_0019": {
      "where": "Either launcher platform: the emergency-exit ladder sign at the cliff.",
      "ways": [
       "Go up next to the painted sign (or mantle onto it) at either launcher for the extract prompt."
-     ]
+     ],
+     "tag": "Cliff extraction"
     }
    }
   },
@@ -648,7 +728,8 @@
      "ways": [
       "Disarm the wall mine on green and shimmy over the metal wall.",
       "Wait in the dark until one of the two arguing says he's going for a leak. Grab him at the wall, drag him back to the fence, interrogate."
-     ]
+     ],
+     "tag": "Special Forces"
     },
     "Objective_0015": {
      "where": "The truck in the square past the Special Forces street (or the second one past the first tank in part 2).",
@@ -656,7 +737,8 @@
       "Pipe at the end of the street, catwalk, then down the ladder when the balcony soldier turns. Take him on the balcony.",
       "Climb the balcony's back pipe and ride the wire. Crouch-drop onto the truck's back half, not the end of the wire.",
       "Grab the truck operator just after he walks back in, drag him to the dark corner by the speaker, then use the truck's computer."
-     ]
+     ],
+     "tag": "Command truck"
     },
     "Objective_0001": {
      "where": "Server room in the NDT building beside the command truck.",
@@ -664,32 +746,37 @@
       "Secret: the ladder left of the teddy-bear crate (wall mine there), the crawl space right of the speaker, down two ladders into the server room. Take the drives, then hide in the ladder nook.",
       "Front door: shimmy the pipe over the debris-room doorway, kill the lights at the side-room switch and KO each soldier who comes to fix them.",
       "Then down the stairs to the server room; take the man at the computer from behind."
-     ]
+     ],
+     "tag": "NDT drives"
     },
     "Objective_0011": {
      "where": "Elevator down the unexplored hall past the server room (bathroom with a medkit beside it).",
      "ways": [
       "The doors open with two soldiers chatting inside. Sticky-camera gas both between their feet, then ride it up.",
       "Mind the soldier who patrols the upstairs hall."
-     ]
+     ],
+     "tag": "Rooftop"
     },
     "Objective_0004": {
      "where": "Three loudspeakers. Walk under each to cut it.",
      "ways": [
       "1 on the Special Forces street. 2 in the dark corner by the command truck. 3 at the top of the ladder by the burning debris (next to the secret crawl space)."
-     ]
+     ],
+     "tag": "Loudspeakers"
     },
     "Objective_0012": {
      "where": "The NDT building roof.",
      "ways": [
       "Ride the elevator up after taking the drives."
-     ]
+     ],
+     "tag": "Extraction"
     },
     "Objective_0013": {
      "where": "The NDT building roof.",
      "ways": [
       "Ride the elevator up after taking the drives."
-     ]
+     ],
+     "tag": "Extraction"
     }
    }
   },
@@ -703,7 +790,8 @@
       "Pipe at the end of the street, catwalk, then down the ladder when the balcony soldier turns. Take him on the balcony.",
       "Climb the balcony's back pipe and ride the wire. Crouch-drop onto the truck's back half, not the end of the wire.",
       "Grab the truck operator just after he walks back in, drag him to the dark corner by the speaker, then use the truck's computer."
-     ]
+     ],
+     "tag": "Command truck"
     },
     "Objective_0074": {
      "where": "The truck in the square past the Special Forces street (or the second one past the first tank in part 2).",
@@ -711,7 +799,8 @@
       "Pipe at the end of the street, catwalk, then down the ladder when the balcony soldier turns. Take him on the balcony.",
       "Climb the balcony's back pipe and ride the wire. Crouch-drop onto the truck's back half, not the end of the wire.",
       "Grab the truck operator just after he walks back in, drag him to the dark corner by the speaker, then use the truck's computer."
-     ]
+     ],
+     "tag": "Command truck"
     },
     "Objective_0068": {
      "where": "Server room in the NDT building beside the command truck.",
@@ -719,27 +808,31 @@
       "Secret: the ladder left of the teddy-bear crate (wall mine there), the crawl space right of the speaker, down two ladders into the server room. Take the drives, then hide in the ladder nook.",
       "Front door: shimmy the pipe over the debris-room doorway, kill the lights at the side-room switch and KO each soldier who comes to fix them.",
       "Then down the stairs to the server room; take the man at the computer from behind."
-     ]
+     ],
+     "tag": "NDT drives"
     },
     "Objective_0070": {
      "where": "The street just past the wall-mined metal fence.",
      "ways": [
       "Disarm the wall mine on green and shimmy over the metal wall.",
       "Wait in the dark until one of the two arguing says he's going for a leak. Grab him at the wall, drag him back to the fence, interrogate."
-     ]
+     ],
+     "tag": "Special Forces"
     },
     "Objective_0072": {
      "where": "Elevator down the unexplored hall past the server room (bathroom with a medkit beside it).",
      "ways": [
       "The doors open with two soldiers chatting inside. Sticky-camera gas both between their feet, then ride it up.",
       "Mind the soldier who patrols the upstairs hall."
-     ]
+     ],
+     "tag": "Rooftop"
     },
     "Objective_0082": {
      "where": "Three loudspeakers. Walk under each to cut it.",
      "ways": [
       "1 on the Special Forces street. 2 in the dark corner by the command truck. 3 at the top of the ladder by the burning debris (next to the secret crawl space)."
-     ]
+     ],
+     "tag": "Loudspeakers"
     },
     "Objective_0049": {
      "where": "Five portable radar computers. EEV them from the dark.",
@@ -747,7 +840,8 @@
       "1: the lit section of the starting roof (EEV from the dark under the catwalk). 2: the ledge on the next roof, beyond the air-conditioning unit.",
       "3: the balcony you jump to from the wrecked bathrooms (scan it before you leap). 4: the sniper ledge behind the first tank.",
       "5: by the EA-6B wreck. Climb the pipe in the dark corner near the wreckage."
-     ]
+     ],
+     "tag": "Radar receivers"
     },
     "Objective_0084": {
      "where": "Kitchen computer, ground floor of the bombed apartment (the one with the unexploded bomb).",
@@ -755,7 +849,8 @@
       "Drop floor to floor from the plank bridge once the two bomb inspectors leave.",
       "Climb over the bar into the dark and EEV the computer through the small round kitchen window.",
       "Leave by the crawl space high on the wall behind the bar."
-     ]
+     ],
+     "tag": "UAV data"
     },
     "Objective_0047": {
      "where": "East across the tank street, through the hole in the wall.",
@@ -764,7 +859,8 @@
       "High road: the ladder in the small alley past the truck, shoot the bright sign, zip across when the tank turret looks away. Hide behind the overturned car.",
       "Sneak round behind the tank to the ladder up to the sniper ledge. Inside, drop a floor and out the window. Shoot out both street signs.",
       "Squeeze down the left side of the second command truck, then follow the lit path through the wall hole."
-     ]
+     ],
+     "tag": "Crash site"
     },
     "Objective_0035": {
      "where": "Top of the scaffolding by the second tank, beside the crash site.",
@@ -772,13 +868,15 @@
       "From the scaffolding, non-lethal the two soldiers on the ground. A frag through the open hatch kills the tank (bonus).",
       "Pilots (bonus): carry each from the lit corner into the alley you came from. Sticky-shock the soldier who walks out when Lambert complains.",
       "Climb to the top of the scaffolding and 'designate plane'. You are extracted automatically."
-     ]
+     ],
+     "tag": "Designate wreck"
     },
     "Objective_0018": {
      "where": "EA-6B crash site.",
      "ways": [
       "The data is unrecoverable. Climb the scaffolding by the second tank and designate the wreck."
-     ]
+     ],
+     "tag": "EA-6B data"
     }
    }
   },
@@ -794,7 +892,8 @@
       "Shimmy the long wall pipe to the far ledge, OCP the lamp, climb down the pipe past the awning, drop into the square street opening.",
       "Basement: whistle before he turns the lights on. He searches with a flashlight while you slip out the door.",
       "Laundry: OCP the fan. Take the seated guard when he checks it, or OCP the light and slip by."
-     ]
+     ],
+     "tag": "Bathhouse entry"
     },
     "Objective_0035": {
      "where": "Locked upstairs office past reception.",
@@ -802,7 +901,8 @@
       "Maintenance-closet crawl space (high on the wall) to the reception closet. Kill the desk lamp, grab the reception guard when he sits, hack the desk PC to kill the stair camera.",
       "Or OCP the light by the glass doors, take the outside guard, climb the pole by the truck and wire to the bedroom window. Wait for the sleeper to lie down.",
       "Office code 3650 (interrogate the sleeper in the only unlocked room). Use the desk computer or the file cabinet."
-     ]
+     ],
+     "tag": "Shetland's office"
     },
     "Objective_0003": {
      "where": "Three phone-line boxes.",
@@ -810,7 +910,8 @@
       "1: the street panel the technician works on at the start. Shoot out the near street lamp; he leaves it.",
       "2: corner of the empty-pool room past the locker room (left through the police tape). Pierce the generator in the pool, or walk the scaffold boards.",
       "3: behind the small desk just past the two steam rooms."
-     ]
+     ],
+     "tag": "Phone lines"
     },
     "Objective_0047": {
      "where": "Three phone-line boxes.",
@@ -818,7 +919,8 @@
       "1: the street panel the technician works on at the start. Shoot out the near street lamp; he leaves it.",
       "2: corner of the empty-pool room past the locker room (left through the police tape). Pierce the generator in the pool, or walk the scaffold boards.",
       "3: behind the small desk just past the two steam rooms."
-     ]
+     ],
+     "tag": "Phone lines"
     },
     "Objective_0018": {
      "where": "The barricaded room next to Shetland's upstairs office.",
@@ -826,7 +928,8 @@
       "In the office (code 3650), take the crawl space in the back corner.",
       "Easiest: don't climb out. From the crawl space EEV the computer the I-SDF man is working on.",
       "Or wait until both sit, then grab and interrogate either one. Leave the way you came."
-     ]
+     ],
+     "tag": "I-SDF orders"
     },
     "Objective_0043": {
      "where": "The barricaded room next to Shetland's upstairs office.",
@@ -834,7 +937,8 @@
       "In the office (code 3650), take the crawl space in the back corner.",
       "Easiest: don't climb out. From the crawl space EEV the computer the I-SDF man is working on.",
       "Or wait until both sit, then grab and interrogate either one. Leave the way you came."
-     ]
+     ],
+     "tag": "I-SDF orders"
     },
     "Objective_0016": {
      "where": "Private bath with the little bridge, past the steam rooms. Listen from the crawl space behind the glass plant area.",
@@ -843,13 +947,15 @@
       "I-SDF guards: hide behind the desk (blow the candle) for the first. For the second, blow the candle on the left fork and take him when he relights it.",
       "Shoot the candle by the floor crawl space into the private bath. Wait for the technician to leave and do not touch him. Wade to the bridge, take the crawl space behind the glass, and listen."
      ],
-     "watch": "Leave the technician alone: later he frags one of the two I-SDF men in the hall for you."
+     "watch": "Leave the technician alone: later he frags one of the two I-SDF men in the hall for you.",
+     "tag": "Shetland meeting"
     },
     "Objective_0030": {
      "where": "The laptop in the meeting room.",
      "ways": [
       "From the eavesdrop crawl space, EEV the laptop and read the 'Chaos Theory' file, ideally before the meeting ends."
-     ]
+     ],
+     "tag": "Shetland's laptop"
     },
     "Objective_0026": {
      "where": "Furnace room past the shower room. Three bombs on timers.",
@@ -858,13 +964,15 @@
       "Furnace: shoot the light overhead, break the gate lock. Bomb 1 behind the machine down the passage left of the stairs. Sticky-shock the I-SDF man at the stairs.",
       "Bomb 2: up the stairs, over the big machine. Zap the two on the catwalk from the machine top. Bomb 3 by the cement bags: running jump to its ledge.",
       "Then sticky-shock (or door-bash) the last man coming through the far door."
-     ]
+     ],
+     "tag": "Bombs"
     },
     "Objective_0024": {
      "where": "Through the far furnace door, up the ladder.",
      "ways": [
       "After the talk, when he lowers his gun, shoot him or lower yours. Both end the mission."
-     ]
+     ],
+     "tag": "Shetland"
     }
    }
   },
@@ -877,7 +985,8 @@
      "where": "Whole mission.",
      "ways": [
       "Any death fails it. Do not shoot the wall mine by the three soldiers at the bottom of the shaft; that kills them."
-     ]
+     ],
+     "tag": "No kills"
     },
     "Objective_0007": {
      "where": "Third floor, the big room with plants. The blindfolded pair by the ceiling light and camera.",
@@ -886,7 +995,8 @@
       "Lobby: crouch-run the wet trench past the wall sign, take the scanner-desk man, then the crawl space up behind the desk guard. Stairs to the third floor, then the high crawl space into the hostage room.",
       "Or no fighting: climb the big red sculpture by the security desk (OCP the War Room lights first), walk the ceiling beams to the crawl space.",
       "OCP the camera, sneak (no noise) to the officer furthest from it and talk."
-     ]
+     ],
+     "tag": "US officers"
     },
     "Objective_0037": {
      "where": "Server room past the escalator and the retinal door.",
@@ -895,7 +1005,8 @@
       "Retinal door: OCP the camera, shoot the light on the right, stand by the stair rail, grab the guard at the bottom and make him scan. Or hack it (hard).",
       "Server room code 1945. Night vision for the two IR cameras. OCP the near one, then use the computer with two blue screens (walk up to it; no EEV)."
      ],
-     "watch": "Any alarm lowers the servers. The fallback is the retinal scanner in the far corner of the server room."
+     "watch": "Any alarm lowers the servers. The fallback is the retinal scanner in the far corner of the server room.",
+     "tag": "War Room access"
     },
     "Objective_0009": {
      "where": "Inside the cube in the War Room, through a ceiling crawl space at the back of the cube.",
@@ -903,19 +1014,22 @@
       "The cameras only watch the back half, so walk in right under them. Non-lethal the hall guard when he faces you, past the camera range.",
       "OCP the hall camera, crouch-run to the dark back corner, drop the second guard.",
       "Jump up on the right side of the cube back, take the crawl space to the end, and listen."
-     ]
+     ],
+     "tag": "War Room meeting"
     },
     "Objective_0010": {
      "where": "From the cube ceiling crawl space.",
      "ways": [
       "When Grim asks, EEV the screen below and right of the big blue wall screens. Nothing visible happens, but it counts."
-     ]
+     ],
+     "tag": "General's laptop"
     },
     "Objective_0008": {
      "where": "Only here if missed in the Bathhouse.",
      "ways": [
       "No walkthrough pins it down. It most likely completes with the War Room recording and the laptop, which name Otomo."
-     ]
+     ],
+     "tag": "I-SDF orders"
     },
     "Objective_0011": {
      "where": "Otomo's server room at the bottom of the elevator shaft.",
@@ -923,26 +1037,30 @@
       "Run into the fast elevator, ride down, and drop through the floor hatch. Save before the bottom; the clock starts.",
       "Go left round the shaft, OCP the light, slip through the door past the wall mine. The switch on the right of the laser-room doorway turns the grid off.",
       "Server room: over the right railing, into the window past the small table, non-lethal both crouched masked soldiers. Up the right stairs, charge the two-blue-screen bank, drop into the sub-floor passage, detonate."
-     ]
+     ],
+     "tag": "I-SDF servers"
     },
     "Objective_0021": {
      "where": "Same server bank.",
      "ways": [
       "Before you set the charges, hack it and open 'Download ISDF Data'."
-     ]
+     ],
+     "tag": "I-SDF servers"
     },
     "Objective_0017": {
      "where": "Glass office at the top of the stairs past the sub-floor passage.",
      "ways": [
       "Non-lethal the two new guards from the passage end, or sneak up the stairs.",
       "After his speech, the room across opens. Take the floor hole in its back right corner into his office, then the save prompt."
-     ]
+     ],
+     "tag": "Otomo"
     },
     "Objective_0020": {
      "where": "Otomo's office, the glass wall behind the desk.",
      "ways": [
       "Carrying Otomo, place the charge on the glass wall, step back across the room, and let it blow."
-     ]
+     ],
+     "tag": "Bay wall"
     }
    }
   }

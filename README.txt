@@ -12,18 +12,18 @@ Install (on a fresh Steam install):
 Controls:
   Up arrow      slide OPSAT up (bottom-left)
   Down arrow    slide it away
-  Left / Right  switch tab: TERMINAL <-> RADAR
+  Left / Right  switch panel: DVORAK <-> INTEL <-> RADAR (the panel glides to each one's height)
   Insert        ask DVORAK (Enter sends, Esc cancels)
   The arrow keys are taken off movement in your game profile; WASD moves Sam.
   F2 / F3 still toggle god mode / invisible, but OPSAT and DVORAK ignore them.
 
-TERMINAL  Live next-moves card (where you are, primaries done, the next objective, where it is and
-          the ways through it, any instant-fail rule) above DVORAK. DVORAK = Claude Haiku 4.5; it asks
-          for your Anthropic API key once, plans for a pure stealth operator, and remembers your
-          campaign across sessions.
-RADAR     Objectives with live ticks and the fail rule on top, the NEXT card with where / ways / route,
-          then the radar (guards and cones, cameras, objective markers) with alarm / alert / suspicious /
-          facing-you / camera counts.
+DVORAK    The chat. DVORAK = Claude Haiku 4.5; it asks for your Anthropic API key (again if a key is
+          rejected), plans for a pure stealth operator, and remembers your campaign across sessions.
+INTEL     Opens first. The next objective and its distance, FROM HERE (what to do in the exact area you
+          are standing in), the objective's own ways through, then the objectives checklist.
+RADAR     The radar first: guards and view cones, cameras, and objective markers labelled with short
+          names ("Vault panels", "Punch cards"), plus distance for ones off the edge. A slim NEXT bar on
+          top, alarm / alert / suspicious / facing-you / camera counts below.
 
 Ways through (free): every objective in all 10 missions has its location and 2-4 stealth ways
 through it, researched once from several full walkthroughs and cross-checked (door codes included).
