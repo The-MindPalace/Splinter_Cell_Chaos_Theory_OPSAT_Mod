@@ -28,7 +28,7 @@ class RunLog:
         self.f = self.mission = self.objs = None
         self.last = 0.0
 
-    def tick(self, mission, room, objs, intel, mood, relative):
+    def tick(self, mission, room, objs, intel, mood, relative, cheats=(False, False), stance=(None, None)):
         """Call every poll. mood(g) -> (label, colour); relative(sam, loc) -> (metres, bearing, dz)."""
         if not mission or mission == 'menu' or not intel:
             return
@@ -60,6 +60,10 @@ class RunLog:
         (x, y, z), yaw = sam
         rec = {'t': round(now, 2), 'r': room, 'p': [round(x), round(y), round(z), yaw],
                'a': intel.get('alarm') or 0, 'g': guards}
+        if stance[0] is not None:
+            rec['c'], rec['l'] = int(stance[0]), stance[1]   # crouched, light
+        if any(cheats):
+            rec['x'] = int(cheats[0]) | int(cheats[1]) << 1  # god mode 1, invisible 2: not for training
         if bot_driving():
             rec['b'] = 1
         self.write(rec)

@@ -47,6 +47,7 @@ class SCCTNavEnv(gym.Env):
         self.full_actions = full_actions
         self.action_space = spaces.MultiDiscrete([len(MOVES), len(TURNS), 2] + ([3] if full_actions else []))
         self.max_steps, self.reset_mode, self.detect_ends = max_steps, reset_mode, detect_ends
+        self.unattended = False   # True: bring the game back to the front when something steals focus
         self.game = Game()
         self.has_quicksave = False
 
@@ -150,9 +151,12 @@ class SCCTNavEnv(gym.Env):
         if game.in_front():
             return
         game.release_all()
+        t0 = time.monotonic()
         while not game.in_front():
             if not co.find_pid():
                 raise RuntimeError('game closed - training stopped')
+            if self.unattended and time.monotonic() - t0 > 3:   # nobody at the PC: take the game back
+                game.focus()
             time.sleep(0.5)
         time.sleep(0.5)
 

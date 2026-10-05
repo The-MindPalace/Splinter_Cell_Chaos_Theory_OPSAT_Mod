@@ -591,6 +591,15 @@ class Game:
             invis |= bool(v and v & i_mask)
         return god, invis
 
+    def stance(self):
+        """(crouched, luminosity) of Sam: Pawn.bIsCrouched (pawn+696, mask 2), Actor.LuminosityFactor (pawn+612;
+        0-5 shadow, 35+ lit). For the run recorder."""
+        try:
+            pawn = self.m.u32(self.players[0] + self.pawn_off)
+            return bool(self.m.u32(pawn + 696) & 2), round(self._f32(pawn + 612), 1)
+        except Exception:
+            return None, None
+
     def mission_state(self):
         """(mission id, current room, objectives [(key, status, id)]).
 
@@ -1451,7 +1460,8 @@ class Overlay:
         intel = self.game.intel()
         self.panel.intel = intel
         self.track_triggers(mission, room, objs, intel)
-        self.runlog.tick(mission, room, objs, intel, guard_mood, relative)  # the training set (runs/)
+        self.runlog.tick(mission, room, objs, intel, guard_mood, relative,  # the training set (runs/)
+                         cheats=cheats, stance=self.game.stance())
         threat = self.threat_chip(intel)
         self.panel.game_hwnd = hwnd
         self.pump_dvorak(mission)

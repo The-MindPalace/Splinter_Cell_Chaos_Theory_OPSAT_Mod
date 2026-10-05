@@ -25,6 +25,7 @@ class SCCTFisherEnv(SCCTNavEnv):
         super().__init__(max_steps=max_decisions, pixels=pixels, **kw)
         self.action_space = spaces.Discrete(len(OPTIONS))
         self.fisher = Fisher(self.game, log=lambda *a: print('[fisher]', *a))
+        self.dead_exits = set()     # (room, next room) pairs exploration proved unreachable
 
     def reset(self, seed=None, options=None):
         obs, info = super().reset(seed=seed, options=options)
@@ -33,6 +34,22 @@ class SCCTFisherEnv(SCCTNavEnv):
         self.dumped = set()
         self.alarm0 = self.prev['alarm']
         return obs, info
+
+    def _next_room(self, route):
+        """The next room to enter: the route's next room unless exploration proved it unreachable from here;
+        then the adjacent room with the shortest remaining route to the objective."""
+        here, target_room = route[0], route[-1]
+        if (here, route[1]) not in self.dead_exits:
+            return route[1]
+        g = self.game.g
+        options = []
+        for n in g.room_graph.get(here, []):
+            if (here, n) in self.dead_exits:
+                continue
+            rest = g.route(n, target_room)
+            if rest:
+                options.append((len(rest), n))
+        return min(options)[1] if options else None
 
     def _bodies(self, s):
         return [t for t in self.fisher.perceive()['threats']
@@ -46,7 +63,15 @@ class SCCTFisherEnv(SCCTNavEnv):
         if name == 'ADVANCE':
             route = self.goal[1]                         # rooms from here to the objective's room
             if len(route) > 1:                           # next room: explore until we enter it
-                note = f.explore_step(route[1], self.game.snapshot()['rooms'].get(route[1], self.goal[2][0]))
+                nxt = self._next_room(route)
+                if nxt is None:
+                    note = 'all_exits_dead'
+                else:
+                    snap = self.game.snapshot()
+                    note = f.explore_step(nxt, snap['rooms'].get(nxt, self.goal[2][0]))
+                    if note == 'dead_end':
+                        self.dead_exits.add((route[0], nxt))
+                        f.log('exit %s -> %s marked dead; trying another way' % (route[0], nxt))
             else:                                        # in the objective's room: walk to the beacon
                 note = f.move_to(self.goal[2][-1], budget_s=3.0)
         elif name == 'WAIT':

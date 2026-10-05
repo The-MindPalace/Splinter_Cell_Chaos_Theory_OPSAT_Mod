@@ -82,7 +82,21 @@ class Game:
         self.held = set()
 
     # --- telemetry ---------------------------------------------------------------------------------
+    def heartbeat(self):
+        """Tell OPSAT's run recorder the bot is driving (its samples get "b":1)."""
+        if time.monotonic() - getattr(self, '_beat', 0) < 10:
+            return
+        self._beat = time.monotonic()
+        flag = os.path.join(os.path.expanduser('~'), 'Saved Games', 'OPSAT', 'runs', 'bot_active')
+        try:
+            os.makedirs(os.path.dirname(flag), exist_ok=True)
+            open(flag, 'a').close()
+            os.utime(flag)
+        except OSError:
+            pass
+
     def snapshot(self):
+        self.heartbeat()
         mission, room, objs = self.g.mission_state()
         intel = self.g.intel()
         if not intel:
