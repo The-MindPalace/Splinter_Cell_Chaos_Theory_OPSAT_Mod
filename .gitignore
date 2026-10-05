@@ -12,3 +12,5 @@ api_key.txt
 # bot captures
 tools/bot/live/
 tools/bot/__pycache__/
+rl/runs/
+rl/**/__pycache__/
