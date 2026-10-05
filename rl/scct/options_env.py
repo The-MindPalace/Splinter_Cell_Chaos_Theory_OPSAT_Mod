@@ -14,7 +14,9 @@ import time
 
 from gymnasium import spaces
 
+import json
 import math
+import os
 
 import numpy as np
 
@@ -65,6 +67,37 @@ class SCCTFisherEnv(SCCTNavEnv):
         self.dumped = set()
         self.alarm0 = self.prev['alarm']
         return obs, info
+
+    def _checkpoint(self, s):
+        """First time Sam reaches a room on the route (no guard alert, not falling): quicksave there, so the
+        next episodes start at the furthest point instead of replaying the beach. One save per room, ever
+        (kept in runs/checkpoints_<mission>.json)."""
+        room, mission = s.get('room'), s.get('mission')
+        if not room or not mission or room == 'Beach':
+            return
+        path = os.path.join(os.path.expanduser('~'), 'Saved Games', 'OPSAT', 'runs', 'checkpoints_%s.json' % mission)
+        if getattr(self, '_ckpt_mission', None) != mission:
+            try:
+                self._ckpt = set(json.load(open(path)))
+            except (OSError, ValueError):
+                self._ckpt = set()
+            self._ckpt_mission = mission
+        if room in self._ckpt or room not in (self.goal[1] if self.goal else []):
+            return
+        threats = self.fisher.perceive()['threats']
+        if any(t['mood'] in ('ALERT', 'SUSPICIOUS') and t['d'] < 25 for t in threats):
+            return
+        from .controls import tap
+        self.game.release_all()
+        time.sleep(0.5)
+        tap('quicksave', 0.1)
+        time.sleep(1.5)
+        self._ckpt.add(room)
+        try:
+            json.dump(sorted(self._ckpt), open(path, 'w'))
+        except OSError:
+            pass
+        self.fisher.log('checkpoint: quicksaved on reaching %s - episodes start here now' % room)
 
     def _vec(self, s, goal):
         return np.concatenate([super()._vec(s, goal), np.asarray(self.brief.vector(), np.float32)])
@@ -180,6 +213,7 @@ class SCCTFisherEnv(SCCTNavEnv):
             for e in self.brief.update(s):
                 if e.startswith('objective DONE'):
                     r += 50.0                            # any objective, main or side (crate scans, files)
+            self._checkpoint(s)
             used = f.interact_objectives()
             if used:
                 info['result'] = note = note + ' +' + used

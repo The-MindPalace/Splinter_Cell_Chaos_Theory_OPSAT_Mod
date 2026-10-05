@@ -25,6 +25,7 @@ and into expectations the playbook acts on:
 import json
 import math
 import os
+import struct
 
 from .game import co
 
@@ -81,6 +82,51 @@ class Briefing:
                 if p:
                     out.append((kind, g.oname(o), p))
         self.things = out
+        return out
+
+    # --- conversations (ESpeechDispatcher: bActive + Speechers) -----------------------------------------
+    def _speech_setup(self, g):
+        if getattr(self, '_speech', None) is not None:
+            return self._speech
+        props, disp = {}, []
+        for o in g.objects():
+            hdr = g.m.read(o + co.O_OUTER, 0x10)
+            if not hdr:
+                continue
+            outer, _, nm, cls = struct.unpack('<IIII', hdr)
+            cn = g.oname(cls)
+            if cn == 'ESpeechDispatcher':
+                disp.append(o)
+            elif cn and cn.endswith('Property') and g.oname(outer) == 'ESpeechDispatcher':
+                props[g.name(nm)] = (g.m.u32(o + co.P_OFFSET), g.m.u32(o + co.P_BITMASK))
+        self._speech = (disp, props) if {'bActive', 'Speechers'} <= set(props) else ([], {})
+        return self._speech
+
+    def conversations(self, g, sam=None):
+        """Scripted conversation groups: [(distance cm or None, [speaker positions])]. NOTE: bActive reads 1 for
+        every dispatcher in the level (enabled, not 'speaking now'), so this says who talks with whom and where,
+        not whether a line is playing right now - that state is still to be found (SpeechInfos entries)."""
+        disp, props = self._speech_setup(g)
+        if not disp:
+            return []
+        loc = g.props[('Actor', 'Location')][0]
+        a_off, a_mask = props['bActive']
+        s_off = props['Speechers'][0]
+        out = []
+        for o in disp:
+            v = g.m.u32(o + a_off)
+            if not v or not (v & a_mask):
+                continue
+            hdr = g.m.read(o + s_off, 8)
+            data, num = struct.unpack('<II', hdr) if hdr else (0, 0)
+            pts = []
+            for i in range(min(num, 6)):
+                a = g.m.u32(data + 4 * i)
+                p = g._vec(a + loc) if a else None
+                if p:
+                    pts.append(p)
+            d = min((math.dist(sam, p) for p in pts), default=None) if sam else None
+            out.append((d, pts))
         return out
 
     def vents(self):
