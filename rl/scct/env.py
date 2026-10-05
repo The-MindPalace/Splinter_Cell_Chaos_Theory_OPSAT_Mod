@@ -94,8 +94,9 @@ class SCCTNavEnv(gym.Env):
         super().reset(seed=seed)
         game = self.game
         game.release_all()
-        if not game.focus():
-            raise RuntimeError('game window not in front (is the desktop locked?)')
+        if not co.find_pid():
+            raise RuntimeError('game closed - training stopped')
+        self._guard_focus()  # waits for you to bring the game back; never steals focus
         if self.has_quicksave and self.reset_mode == 'quickload':
             tap('quickload', 0.1)
             self._wait_live(20)
@@ -132,9 +133,23 @@ class SCCTNavEnv(gym.Env):
         return sum(1 for g in s['intel'].get('guards', []) if co.guard_mood(g)[0] == 'SUSPICIOUS'
                    and co.relative(s['sam'], g['loc'])[0] < 30)
 
+    def _guard_focus(self):
+        """Never type into another window: if the game is not in front (alt-tab, closed), release every key and
+        wait until it is back. Raises if the game is gone."""
+        game = self.game
+        if game.in_front():
+            return
+        game.release_all()
+        while not game.in_front():
+            if not co.find_pid():
+                raise RuntimeError('game closed - training stopped')
+            time.sleep(0.5)
+        time.sleep(0.5)
+
     def step(self, action):
         move, turn, crouch, act = (int(a) for a in action)
         game = self.game
+        self._guard_focus()
         game.hold(MOVES[move])
         if TURNS[turn]:
             game.turn(TURNS[turn])
@@ -145,6 +160,8 @@ class SCCTNavEnv(gym.Env):
         elif act == 2:
             tap('use', 0.06)
         time.sleep(STEP_S)
+        if not game.in_front():  # focus left mid-step: let go at once
+            game.release_all()
         self.t += 1
         s = game.snapshot()
         info = {'room': s['room'] if s else None}
