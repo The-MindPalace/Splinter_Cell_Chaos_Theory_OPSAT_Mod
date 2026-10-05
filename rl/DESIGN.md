@@ -9,7 +9,8 @@ First target: finish mission 1, Lighthouse. This folder is the smallest environm
 objective beacon on the 3D map, routed through the map's room graph (room centres as waypoints, then the
 beacon). No human routes or demonstrations go in; recorded runs are only used for evaluation.
 
-**Interface.** Gymnasium `Env`, real time, 4 steps per second (each action held 0.25 s).
+**Interface.** Gymnasium `Env`, real time: each action held 0.25 s, about 3 steps per second with the memory
+read. Verified 2026-10-05 in Lighthouse: smoke test passes, F8 reset returns Sam to the exact start.
 
 | | |
 |---|---|
