@@ -26,11 +26,19 @@ class SCCTFisherEnv(SCCTNavEnv):
         self.action_space = spaces.Discrete(len(OPTIONS))
         self.fisher = Fisher(self.game, log=lambda *a: print('[fisher]', *a))
         self.dead_exits = set()     # (room, next room) pairs exploration proved unreachable
+        self.reached = set()
 
     def reset(self, seed=None, options=None):
         obs, info = super().reset(seed=seed, options=options)
         self.fisher.carrying, self.fisher.bodies = None, []
         self.dead_exits = set()     # each episode retries every exit with what the map has learned since
+        if getattr(self, 'map_mode', False):    # mapping: invincible + invisible, so exploring cannot end it
+            self.fisher.log('map mode: cheats (god, invisible) = %s' % (self.game.set_cheats(True),))
+        self.reached = set()        # rooms entered this episode: the goal never falls back behind them
+        xm = self.fisher.explorer()
+        xm.unreach.clear()                       # near-misses are per episode; the map has grown since
+        for t in xm.tries.values():              # so are failures of known moves: two per episode, then
+            t['fail'] = 0                        # dropped until the next one (an imprecise climb is not a wall)
         self.fisher.save()          # keep what the last episode learned (walkable ground, dark spots)
         self.dumped = set()
         self.alarm0 = self.prev['alarm']
@@ -40,8 +48,15 @@ class SCCTFisherEnv(SCCTNavEnv):
         """The next room to enter: the route's next room unless exploration proved it unreachable from here;
         then the adjacent room with the shortest remaining route to the objective."""
         here, target_room = route[0], route[-1]
-        if (here, route[1]) not in self.dead_exits:
-            return route[1]
+        self.reached.add(here)
+        # stepping back over a room boundary while exploring must not turn the goal around: aim for the
+        # first room on the way that has not been reached yet
+        ahead = next((r for r in route[1:] if r not in self.reached), route[-1])
+        frontier = route[route.index(ahead) - 1]
+        if frontier != here and frontier in self.reached:
+            return frontier                      # back to the frontier room first (known route), explore from there
+        if (here, ahead) not in self.dead_exits:
+            return ahead
         g = self.game.g
         options = []
         for n in g.room_graph.get(here, []):
@@ -61,7 +76,14 @@ class SCCTFisherEnv(SCCTNavEnv):
         f, name = self.fisher, OPTIONS[int(action)]
         r, note = -0.05, ''
         s = self.prev
-        if name == 'ADVANCE':
+        if name == 'ADVANCE' and getattr(self, 'use_mesh', True):
+            try:
+                note = f.nav_step(self.goal[2][-1])          # the objective's beacon, over the AI nav mesh
+            except Exception as e:                       # mesh unreadable: fall back to rooms + exploring
+                f.log('nav mesh unavailable (%r); exploring by rooms' % (e,))
+                self.use_mesh = False
+                note = 'progress'
+        elif name == 'ADVANCE':
             route = self.goal[1]                         # rooms from here to the objective's room
             if len(route) > 1:                           # next room: explore until we enter it
                 nxt = self._next_room(route)

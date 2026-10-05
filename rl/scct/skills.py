@@ -23,6 +23,7 @@ from collections import defaultdict, deque
 from .controls import RMB, click, key, tap, wheel
 from .game import Game, co
 from .explore import ExploreMap, SECTORS, cell_of, heading_of
+from .navmesh import NavMesh
 
 FLOOR_M = 2.5
 DARK = 5.0                # LuminosityFactor at or below this = shadow
@@ -221,6 +222,8 @@ class Fisher:
         self.speed_ticks = [0, SPEED_TICKS]
 
     def set_speed(self, frac):
+        if getattr(self, 'fast', False):
+            frac = 1.0                                   # mapping mode (cheats on): full crouched pace
         if self.speed_ticks is None:
             self.calibrate_speed()
         cur, top = self.speed_ticks
@@ -435,6 +438,7 @@ class Fisher:
             self.log('explore map: %d moves learned from %d recorded runs' % (
                 self._xmap.seed_from_tracks(paths), len(paths)))
             self._xmap.add_reverses()
+            self.log('explore map: %d neighbouring-cell guesses' % self._xmap.add_adjacent())
         return self._xmap
 
     def _walk_sector(self, sector, max_s=2.5, min_m=0.8):
@@ -499,17 +503,48 @@ class Fisher:
         return ('climb_ok' if ok and c != c0 else 'climb_fail'), c0, (c if ok else None)
 
     def explore_step(self, goal_room, target):
-        """One step toward entering goal_room: walk a known route if there is one, otherwise run the most
-        promising untried experiment and write down the result. Returns entered | progress | dead_end |
-        emergency:<kind>."""
+        """One step toward entering goal_room (by the 3D map's room names)."""
+        return self.explore_to(target, lambda p, room: room == goal_room, goal_room)
+
+    def explore_to(self, target, is_goal, label='goal'):
+        """One step toward ground where is_goal(position, room) holds: walk a known route if there is one,
+        otherwise run the most promising untried experiment and write down the result. Returns entered |
+        progress | dead_end | emergency:<kind>."""
         x = self.explorer()
         s = self.perceive()
-        if s['room'] == goal_room:
+        if is_goal(s['sam'][0], s['room']):
             return 'entered'
         here = x.visit(s['sam'][0], s['room'])
-        goal_cells = {c for c, v in x.cells.items() if v.get('room') == goal_room}
-        plan = x.route(here, goal_cells) if goal_cells else None
-        if not plan and goal_cells:
+        sam = s['sam'][0]
+        # watchdog: decisions that leave Sam where he was (some branch returning without acting) are counted;
+        # after 4 the known-path logic is skipped and a fresh experiment is run from where he stands
+        last = getattr(self, '_xpos', None)
+        self._xidle = getattr(self, '_xidle', 0) + 1 if last and flat(last, sam) < 0.2 else 0
+        self._xpos = sam
+        stuck = self._xidle >= 4
+        if stuck:
+            self.log('watchdog: %d decisions without moving; fresh experiment from here' % self._xidle)
+            self._xidle = 0
+        goal_cells = {c for c, v in x.cells.items() if is_goal(v['p'], v.get('room'))}
+        plan = x.route(here, goal_cells) if goal_cells and not stuck else None
+        if not goal_cells and not stuck:
+            # nothing known reaches the goal yet: walk the known way to the known cell closest to the target
+            # (e.g. the recorded route up into the Cavern), and explore onward from there
+            dist, _ = x.reachable(here)
+            near_t = lambda p: math.hypot(p[0] - target[0], p[1] - target[1]) + 2 * abs(p[2] - target[2])
+            best = min(dist, key=lambda c: near_t(x.cells[c]['p']) if c in x.cells else 1e18)
+            if best != here and best in x.cells and near_t(x.cells[best]['p']) < near_t(sam) - 200:
+                plan = x.route(here, {best})
+        if not plan and goal_cells and not stuck:
+            # standing within 1 m of a known cell counts as being on it (cell boundaries are arbitrary)
+            near = sorted((flat(v['p'], sam), c) for c, v in x.cells.items()
+                          if c != here and flat(v['p'], sam) < 1.0 and abs(v['p'][2] - sam[2]) < 80)
+            for _, c in near:
+                p2 = x.route(c, goal_cells)
+                if p2:
+                    plan, here = p2, c
+                    break
+        if not plan and goal_cells and not stuck:
             # not on a known path: step onto the nearest one that leads there (within 4 m), else explore
             # toward it rather than toward the room's centre (which may be behind a cliff)
             sam = s['sam'][0]
@@ -538,31 +573,107 @@ class Fisher:
                     break
                 x.record(c, sec, r, x.tries[(c, sec)]['to'], detail='known route')
             x.save()
-            return 'entered' if self.perceive()['room'] == goal_room else 'progress'
-        exp = x.next_experiment(here, target, climb_ok=True)
+            s = self.perceive()
+            return 'entered' if is_goal(s['sam'][0], s['room']) else 'progress'
+        exp = (stuck and x.next_experiment(here, target, climb_ok=True, only_start=True)) or             x.next_experiment(here, target, climb_ok=True, room=s['room'])
         if not exp:
             x.save()
             self.log('dead end: every reachable heading tried (%s)' % x.stats())
             return 'dead_end'
         cell, sector, mode, path = exp
         for c, sec in path:                                  # go to the experiment's cell over known moves
-            r, _, _ = self._walk_sector(sec)
-            if r != 'open':
-                x.record(c, sec, 'blocked', detail='path to experiment failed')
-                x.save()
-                return 'progress'
+            r = self._known_move(c, sec)
             if r.startswith('emergency'):
                 return r
+            if r not in ('open', 'climb_ok'):
+                x.record(c, sec, r, detail='path to experiment failed')
+                x.save()
+                return 'progress'
+        s = self.perceive()
+        if x.visit(s['sam'][0], s['room']) != cell:          # not where the experiment belongs: do not file
+            x.unreach[cell] = x.unreach.get(cell, 0) + 1     # its result under another cell; replan instead
+            x.save()
+            return 'progress'
         if mode == 'walk':
             r, c0, to = self._walk_sector(sector)
         else:
             r, c0, to = self._climb_sector(sector)
         if r.startswith('emergency'):
             return r
-        x.record(c0, sector, r, to, detail='%s toward %s' % (mode, goal_room))
+        x.record(c0, sector, r, to, detail='%s toward %s' % (mode, label))
         self.log('experiment %s heading %d from %s: %s' % (mode, heading_of(sector), c0, r))
         x.save()
-        return 'entered' if self.perceive()['room'] == goal_room else 'progress'
+        s = self.perceive()
+        return 'entered' if is_goal(s['sam'][0], s['room']) else 'progress'
+
+    # --- navigation on the level's own AI mesh (navmesh.py) --------------------------------------------
+    def nav(self):
+        if getattr(self, '_nav', None) is None:
+            self._nav = NavMesh.read(self.game.g)
+            cr = self._nav.crossings()
+            self.log('nav mesh: %d triangles, %d areas, %d crossings' % (
+                sum(len(t) for t in self._nav.tris), len(self._nav._comps), len(cr) // 2))
+        return self._nav
+
+    def _follow(self, pts, n=4):
+        """Walk a few mesh waypoints, house style. arrived | progress | stuck | emergency:<kind>."""
+        r = 'progress'
+        for wp in pts[:n]:
+            r = self.move_to(wp, budget_s=4.0, tol_m=0.6)
+            if r.startswith('emergency') or r == 'stuck':
+                return r
+        return 'arrived' if len(pts) <= n and r == 'arrived' else 'progress'
+
+    def nav_step(self, goal):
+        """One step toward goal (x, y, z): on the mesh, walk the guards' paths; between areas, walk to the
+        crossing and solve the short hop with the explorer (aimed at the other side); off the mesh, explore
+        toward the best entry point. arrived | progress | stuck | dead_end | emergency:<kind>."""
+        nm = self.nav()
+        idx = nm.piece_index()
+        s = self.perceive()
+        sam = s['sam'][0]
+        gnode = nm.locate(goal) or nm.nearest(goal, max_dz=1500)[0]
+        gp = idx[gnode]
+        node = nm.locate(sam)
+        if node is None:
+            # off the mesh: the entry point that is close and starts a short area route to the goal
+            best = None
+            for k, pts in nm.border_points().items():
+                route = nm.piece_route(k, gp)
+                if route is None:
+                    continue
+                q = min(pts, key=lambda p: math.hypot(p[0] - sam[0], p[1] - sam[1]) + 2 * abs(p[2] - sam[2]))
+                cost = math.hypot(q[0] - sam[0], q[1] - sam[1]) + 2 * abs(q[2] - sam[2]) + 600 * (len(route) - 1)
+                if best is None or cost < best[0]:
+                    best = (cost, k, q)
+            if best is None:
+                return 'dead_end'
+            _, k, q = best
+            if getattr(self, '_entry_log', None) != k:
+                self._entry_log = k
+                self.log('off the mesh: heading for %s at %s' % (nm.names[nm._comps[k] and next(iter(nm._comps[k]))[0]],
+                                                              [round(v) for v in q]))
+            r = self.explore_to(q, lambda p, room: nm.locate(p) is not None, 'mesh')
+            return r
+        sp = idx[node]
+        if sp == gp:
+            pts = nm.path(sam, goal) or [goal]
+            return self._follow(pts)
+        route = nm.piece_route(sp, gp)
+        if not route:
+            return 'dead_end'
+        pa, pb, _ = nm.crossings()[(route[0], route[1])]
+        nxt = route[1]
+        if math.hypot(pa[0] - sam[0], pa[1] - sam[1]) > 120:
+            pts = nm.path(sam, pa) or [pa]
+            return self._follow(pts)
+        # at the crossing: try straight over first (stairs, door), then explore the hop
+        r = self.move_to(pb, budget_s=5.0, tol_m=0.6)
+        if r.startswith('emergency'):
+            return r
+        if idx.get(nm.locate(self.perceive()['sam'][0])) == nxt:
+            return 'progress'
+        return self.explore_to(pb, lambda p, room: idx.get(nm.locate(p)) == nxt, nm.names[next(iter(nm._comps[nxt]))[0]])
 
     # --- hiding ---------------------------------------------------------------------------------------
     def dark_spot(self, s, away_from=None, max_m=25):

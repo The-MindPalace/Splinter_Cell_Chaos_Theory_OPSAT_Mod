@@ -31,7 +31,8 @@ import time
 u32 = ctypes.windll.user32
 
 SC = {'w': 0x11, 'a': 0x1E, 's': 0x1F, 'd': 0x20, 'crouch': 0x2E, 'jump': 0x2A, 'use': 0x39, 'whistle': 0x2F,
-      'quicksave': 0x3F, 'quickload': 0x42, 'enter': 0x1C, 'esc': 0x01}
+      'quicksave': 0x3F, 'quickload': 0x42, 'enter': 0x1C, 'esc': 0x01,
+      'god': 0x3C, 'invis': 0x3D}                          # F2 = Invincible, F3 = Invisible (verified in memory)
 LMB, RMB = (0x0002, 0x0004), (0x0008, 0x0010)          # (down, up) MOUSEEVENTF flags
 
 

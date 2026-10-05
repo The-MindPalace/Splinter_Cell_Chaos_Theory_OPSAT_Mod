@@ -141,6 +141,16 @@ class Game:
             key(k, False)
         self.held = set(keys)
 
+    def set_cheats(self, on=True):
+        """Mapping mode: God mode (I) and Invisible (J) on or off, checked in memory before and after each
+        key (they are toggles: never tapped blind). Returns the (god, invisible) state."""
+        from .controls import tap
+        for i, name in ((0, 'god'), (1, 'invis')):
+            if self.g.cheats()[i] != on and self.focus():
+                tap(name, 0.08)
+                time.sleep(0.4)
+        return self.g.cheats()
+
     def release_all(self):
         self.hold(set())
 

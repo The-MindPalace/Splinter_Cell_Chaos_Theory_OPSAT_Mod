@@ -183,11 +183,31 @@ class ExploreMap:
             if t['result'] == 'open' and t['to']:
                 self._reverse(c, sec, tuple(t['to']))
 
+    def add_adjacent(self):
+        """Neighbouring cells Sam has stood on (8-neighbourhood, under 60 cm apart in height) are assumed
+        walkable between: fills holes where a recording skipped a step. Marked 'adjacent' and costed a bit
+        higher; a guess that fails twice is dropped like any known move."""
+        n = 0
+        for c, v in list(self.cells.items()):
+            for s in range(SECTORS):
+                if (c, s) in self.tries:
+                    continue
+                a = math.radians(heading_of(s))
+                dx, dy = round(math.cos(a)), round(math.sin(a))
+                for dz in (0, -1, 1):
+                    nb = (c[0] + dx, c[1] + dy, c[2] + dz)
+                    w = self.cells.get(nb)
+                    if w and abs(w['p'][2] - v['p'][2]) < 60:
+                        self.tries[(c, s)] = {'result': 'open', 'n': 0, 'to': list(nb), 'src': 'adjacent'}
+                        n += 1
+                        break
+        return n
+
     def edges(self, c):
         for s in range(SECTORS):
             t = self.tries.get((c, s))
             if t and t['result'] in ('open', 'climb_ok') and t['to'] and t.get('fail', 0) < 2:
-                yield tuple(t['to']), s, (1.0 if t['result'] == 'open' else 3.0)
+                yield tuple(t['to']), s, (3.0 if t['result'] == 'climb_ok' else 1.5 if t.get('src') == 'adjacent' else 1.0)
 
     def route(self, start, goal_cells):
         """Shortest known walk from start to any goal cell: list of (cell, sector, how) or None."""
@@ -221,14 +241,14 @@ class ExploreMap:
                     heapq.heappush(pq, (d + w, n))
         return dist, prev
 
-    def next_experiment(self, start, target, climb_ok):
+    def next_experiment(self, start, target, climb_ok, room=None, only_start=False):
         """The untried (cell, heading) most likely to get closer to target, among cells reachable over known
         moves. Returns (cell, sector, mode, path_to_cell) or None when everything reachable is exhausted."""
         dist, prev = self.reachable(start)
         best = None
         for c, d in dist.items():
             p = self.cells.get(c, {}).get('p')
-            if not p:
+            if not p or (c != start and (only_start or self.unreach.get(c, 0) >= 2)):
                 continue
             for s in range(SECTORS):
                 t = self.tries.get((c, s))
@@ -242,6 +262,8 @@ class ExploreMap:
                 else:
                     continue
                 cost = gain + 0.4 * d + (1.5 if t else 0.0) + (2.0 if mode == 'climb' else 0.0)
+                if room and self.cells[c].get('room') != room:
+                    cost += 30.0                       # explore the frontier room, not the ground behind it
                 if best is None or cost < best[0]:
                     best = (cost, c, s, mode)
         if not best:

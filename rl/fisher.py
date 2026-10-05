@@ -100,6 +100,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--hours', type=float, default=0, help='unattended: keep running episodes this long')
     ap.add_argument('--decisions', type=int, default=200, help='decisions per episode')
+    ap.add_argument('--map', action='store_true', help='mapping: God mode + Invisible on, full crouched pace')
     ap.add_argument('--steal-focus', action='store_true', help='bring the game back to the front (nobody at the PC)')
     args = ap.parse_args()
     lock = single_instance()  # noqa: F841 (held until exit)
@@ -112,6 +113,7 @@ def main():
                 if env is None:
                     env = gym.make('SCCTFisher-v0', max_decisions=args.decisions).unwrapped
                     env.unattended = args.steal_focus
+                    env.map_mode = env.fisher.fast = args.map
                 run_episode(env, args.decisions, ep)
                 ep, failures = ep + 1, 0
             except KeyboardInterrupt:

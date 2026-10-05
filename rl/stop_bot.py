@@ -7,7 +7,7 @@ processes are matched by command line instead.
 """
 import subprocess
 
-PS = ("Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -match 'fisher\\.py|train_ppo\\.py' "
+PS = ("Get-CimInstance Win32_Process | Where-Object { $_.Name -like 'python*' -and $_.CommandLine -match 'fisher\\.py|train_ppo\\.py' "
       "-and $_.ProcessId -ne $PID } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force; $_.ProcessId }")
 
 
