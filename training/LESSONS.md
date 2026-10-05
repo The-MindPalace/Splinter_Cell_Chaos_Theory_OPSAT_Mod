@@ -68,6 +68,33 @@ edge) -> (4790, 1179) on the rock ramp (z rises) -> (4956, 854) light 0 -> crevi
 A plain forward move stops there: the narrow passage bends; next session run `probe.py` from the crevice
 mouth, then the crawlspace (crouch) leads to the Cavern (room centre about (4967, -1305)).
 
+**01 Lighthouse, Cavern -> Entrance floor (found 2026-10-05 with night vision, tools/bot/drive.py).**
+From the deep Cavern (5010, -309, -167) go west through the low tunnel toward the light (it bends left)
+into a lit chamber (4289, -293, light 130+). Face south: the HUD says INTERACT - ENTER CRAWL SPACE at
+(4286, -346). Space to enter, walk, Space at EXIT FRONT (4309, -563) - the scripted Fisher/Lambert talk and
+the objective "discover where the guerillas got their arms" start here. Then four ledge climbs heading south
+past the small waterfall (+86, +195, +91, +55 cm) to (4360, -1009, 245); a rope bridge is off to the right.
+Two metres on, Sam is on the guards' nav mesh (Entrance floor). The bot replays all of this alone now.
+
+**01 Lighthouse, beyond.** 3D-map room route to Morgenholt: Cavern -> Wine Cellar (5386, -3693, 344; on the
+Entrance floor mesh, 42 waypoints from the bridge area) -> Ampitheatre (7204, -4494, 796) -> Torture
+Dungeon (7358, -3768, 819), both on the Dungeon floor ~5.5 m higher. The way up between them is not in the
+mesh (probably stairs); the bot explores it from the Entrance floor's edge nearest the Ampitheatre.
+Two guards chat near (5404, -2626) at the end of the bridge area.
+
+## Level knowledge the bot reads from memory
+
+- **AI nav mesh** (rl/scct/navmesh.py): ENavMesh objects, verts at +0x50, 60-byte triangles at +0x68
+  (3 vertex indices, 3 neighbours, centre). Lighthouse: 1563 triangles, 9 areas. Guards' ground only - no
+  Sam-only routes (crawlspaces, ledges, pipes). Closest border points between floors are often sheer walls,
+  so floors are joined by exploring, not by the mesh's geometry.
+- **3D map rooms**: E3DMapSystem room graph + zone points per room (EZoneInfo actors) - the semantic route.
+- **Interactions**: blocked + nothing near -> Space once (crawlspaces/doors). NEVER with a guard within 3 m:
+  Space grabs him (the bot once walked a guard around for ten minutes).
+- **Cheats for mapping**: F2 god mode, F3 invisible (verified in memory). Map geometry learned with cheats
+  counts; stealth style learned with cheats does not.
+- **Pawn z is the body centre**: about 70-90 cm above the floor (mesh z 256 floor = Sam z ~330).
+
 ## Run log
 
 | # | Mission | Result | What happened |
@@ -76,3 +103,4 @@ mouth, then the crawlspace (crouch) leads to the Cavern (room centre about (4967
 | 2 | Bank | caught | Went right from the start into a lit patch (35); guard at 13 m alerted, killed |
 | 3 | Bank | caught | Dark route + breaker worked; a guard came to check the breaker with a flashlight and met Sam in the alley |
 | 4 | Lighthouse | in progress | New campaign on Normal (save LIGHTHOUSE_BOT). Beach ramp climbed unseen, at the crevice mouth when the game closed (22:43) |
+| 5 | Lighthouse (RL bot, map mode) | Entrance floor | 2026-10-05: explore map seeded from recordings; stuck under the Cavern ledge until the crawlspace was found by hand; then beach -> Entrance floor -> bridge guards alone; a blocked-Space grabbed a guard (fixed) |

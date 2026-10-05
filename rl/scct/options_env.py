@@ -78,7 +78,15 @@ class SCCTFisherEnv(SCCTNavEnv):
         s = self.prev
         if name == 'ADVANCE' and getattr(self, 'use_mesh', True):
             try:
-                note = f.nav_step(self.goal[2][-1])          # the objective's beacon, over the AI nav mesh
+                route = self.goal[1]                     # rooms from here to the objective's room (3D map)
+                nxt = self._next_room(route) if len(route) > 1 else None
+                if nxt:                                  # next room on the way: its centre, over the mesh
+                    target = self.game.snapshot()['rooms'].get(nxt) or self.goal[2][-1]
+                    note = f.nav_step(target, room=nxt)
+                    if note == 'entered':
+                        self.reached.add(nxt)
+                else:                                    # in the objective's room: the beacon
+                    note = f.nav_step(self.goal[2][-1])
             except Exception as e:                       # mesh unreadable: fall back to rooms + exploring
                 f.log('nav mesh unavailable (%r); exploring by rooms' % (e,))
                 self.use_mesh = False

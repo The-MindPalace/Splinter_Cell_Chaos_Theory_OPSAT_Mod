@@ -41,12 +41,23 @@ def main():
     d = ImageDraw.Draw(im)
     P = lambda x, y: ((x - x0) * sc, (y1 - y) * sc)          # north up
     zc = lambda z: max(40, min(255, int(120 + z / 8)))
-    for verts, tris in zip(nm['verts'], nm['tris']):
+    pal = [(90, 60, 60), (60, 90, 60), (60, 60, 110), (100, 90, 40), (90, 50, 100), (40, 100, 100),
+           (110, 70, 30), (70, 70, 70), (120, 120, 50)]
+    order = sorted(range(len(nm['tris'])), key=lambda m: sum(t[2][2] for t in nm['tris'][m]) / max(1, len(nm['tris'][m])))
+    for m in order:                                          # low floors first, higher ones drawn over them
+        verts, tris = nm['verts'][m], nm['tris'][m]
+        col = pal[m % len(pal)]
+        shown = []
         for vs, _, c in tris:
             pts = [P(verts[k][0], verts[k][1]) for k in vs]
             if all(-50 < p[0] < W + 50 and -50 < p[1] < H + 50 for p in pts):
-                g = zc(c[2])
-                d.polygon(pts, fill=(g // 3, g // 3, g // 3), outline=(70, 70, 70))
+                d.polygon(pts, fill=col, outline=tuple(min(255, v + 40) for v in col))
+                shown.append(c)
+        if shown:
+            cx = sum(c[0] for c in shown) / len(shown)
+            cy = sum(c[1] for c in shown) / len(shown)
+            zs = sorted(c[2] for c in shown)
+            d.text(P(cx, cy), '%s z%d..%d' % (nm['names'][m].split('_LG')[0], zs[0], zs[-1]), fill=(255, 255, 255))
     for (c, s), t in tries.items():
         p = cells.get(c, {}).get('p')
         if not p:

@@ -677,7 +677,7 @@ class Fisher:
                 return r
         return 'arrived' if len(pts) <= n and r == 'arrived' else 'progress'
 
-    def nav_step(self, goal):
+    def nav_step(self, goal, room=None):
         """One step toward goal (x, y, z): on the mesh, walk the guards' paths; between areas, walk to the
         crossing and solve the short hop with the explorer (aimed at the other side); off the mesh, explore
         toward the best entry point. arrived | progress | stuck | dead_end | emergency:<kind>."""
@@ -712,21 +712,17 @@ class Fisher:
         if sp == gp:
             pts = nm.path(sam, goal) or [goal]
             return self._follow(pts)
-        route = nm.piece_route(sp, gp)
-        if not route:
-            return 'dead_end'
-        pa, pb, _ = nm.crossings()[(route[0], route[1])]
-        nxt = route[1]
-        if math.hypot(pa[0] - sam[0], pa[1] - sam[1]) > 120:
+        # the goal is on another floor: walk this floor to its edge nearest the goal, explore from there.
+        # (the mesh's own 'crossings' are guesses - closest border points are often a sheer wall)
+        pa = min(nm.border_points()[sp], key=lambda p: math.hypot(p[0] - goal[0], p[1] - goal[1]) +
+                 0.5 * abs(p[2] - goal[2]))
+        if math.hypot(pa[0] - sam[0], pa[1] - sam[1]) > 150:
             pts = nm.path(sam, pa) or [pa]
-            return self._follow(pts)
-        # at the crossing: try straight over first (stairs, door), then explore the hop
-        r = self.move_to(pb, budget_s=5.0, tol_m=0.6)
-        if r.startswith('emergency'):
-            return r
-        if idx.get(nm.locate(self.perceive()['sam'][0])) == nxt:
-            return 'progress'
-        return self.explore_to(pb, lambda p, room: idx.get(nm.locate(p)) == nxt, nm.names[next(iter(nm._comps[nxt]))[0]])
+            r = self._follow(pts)
+            if r != 'stuck':
+                return r
+        done = lambda p, r: idx.get(nm.locate(p)) == gp or (room is not None and r == room)
+        return self.explore_to(goal, done, room or nm.names[next(iter(nm._comps[gp]))[0]])
 
     # --- hiding ---------------------------------------------------------------------------------------
     def dark_spot(self, s, away_from=None, max_m=25):

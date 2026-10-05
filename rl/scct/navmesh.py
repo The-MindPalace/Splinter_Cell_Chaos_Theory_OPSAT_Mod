@@ -243,7 +243,9 @@ class NavMesh:
                     for q in bp[b]:
                         h = math.hypot(p[0] - q[0], p[1] - q[1])
                         if h < max_gap:
-                            c = h + 2.0 * abs(p[2] - q[2])
+                            dz = abs(p[2] - q[2])
+                            # stairs and ramps rise no steeper than their run; steeper is a wall to climb
+                            c = h + 2.0 * dz + (3000.0 if dz > 1.2 * h + 60 else 0.0)
                             if best is None or c < best[2]:
                                 best = (p, q, c)
                 if best:
