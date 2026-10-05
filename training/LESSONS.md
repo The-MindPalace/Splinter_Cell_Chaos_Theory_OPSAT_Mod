@@ -81,6 +81,11 @@ Entrance floor mesh, 42 waypoints from the bridge area) -> Ampitheatre (7204, -4
 Dungeon (7358, -3768, 819), both on the Dungeon floor ~5.5 m higher. The way up between them is not in the
 mesh (probably stairs); the bot explores it from the Entrance floor's edge nearest the Ampitheatre.
 Two guards chat near (5404, -2626) at the end of the bridge area.
+**Found 2026-10-05 23:20:** the way up is a long staircase leaving the Wine Cellar's east doorway at about
+(5650, -3930, z 307), next to the cells: first flight to a landing at z 510 (x 6065-6432), second flight to
+z 850-917 at (6920-7012, -3988) - the top of the Ampitheatre ramp. The bot circled the doorway for 100+
+decisions without trying it (its experiments were blocked by the door frame); walking straight east does it.
+From the top: "Get down into the torture chamber unseen" (Morgenholt at (7911, -4073, 649)).
 
 ## Level knowledge the bot reads from memory
 
