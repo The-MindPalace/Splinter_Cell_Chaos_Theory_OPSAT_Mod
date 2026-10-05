@@ -25,6 +25,38 @@ read. Verified 2026-10-05 in Lighthouse: smoke test passes, F8 reset returns Sam
 yaw, crouch, light level (`Actor.LuminosityFactor`), health, guards (pose, view cone, mood), alarm stage,
 objectives, 3D-map beacons, room graph.
 
+## SCCTFisher-v0 (built): the player's playbook + a learner that picks moves
+
+Raw keys meant thousands of random steps before Sam walked in a line. The house style is now code
+(`scct/skills.py`, controls manual in `scct/controls.py`) and the agent only chooses which skill to run:
+
+| Option | What the playbook does |
+|---|---|
+| ADVANCE | crouched stealth-walk to the next route waypoint; speed from the threat level (15% clear, 8% guard within 20 m, 4% within 10 m or watched, 2% next to one; never 0); path offset to pass behind a guard instead of through his cone; stuck -> climb only if the waypoint is above, else sidestep |
+| WAIT | hold still, crouched |
+| HIDE | nearest dark spot (from Sam's own memory of where light was <= 5) away from guards, then wait until calm |
+| TAKEDOWN | calm guard not looking -> walk to 1.1 m behind him (re-planned as he moves, abort if he turns), Space = grab, interrogate if the interaction list offers it, right mouse = knock out, verified by his AI state |
+| DUMP | pick a spot: dark, no guard within 15 m, no guard walked within 10 m or had it in his cone in the last 5 minutes, not a spot that failed before; carry, drop, then keep auditing - a guard looking at the body marks the spot bad for every later run |
+| SIDESTEP L/R | strafe around an obstacle |
+
+Emergency reflexes (not learned): suspicious -> freeze if in shadow, hide if lit, take him if he passes
+within 2.5 m with his back turned; alert but not looking -> break line of sight and wait 20 s; alert,
+looking, within 6 m -> close in and strike (right mouse); alarm or two alert -> episode over (reload).
+Bodies found -> hide.
+
+Memory per mission (`Saved Games/OPSAT/runs/fisher_memory_<mission>.json`): dark spots, each guard's track
+(position and facing once a second), bad body spots. It grows every run.
+
+Run the playbook alone first (baseline, and a live test of every skill), then train on top:
+```
+python rl/fisher.py 200        # playbook only, prints every decision
+python rl/train_ppo.py 5000    # PPO picks the options (SCCTFisher-v0 is the default)
+```
+
+To verify on the first live run: the wheel-speed calibration (does Pawn.GroundSpeed follow the wheel; else
+20 steps assumed), the interaction-list reader (`prompt_rows`, HUD box position), right mouse = knock-out
+while holding a guard, Space = pick up / drop body.
+
 ## Run it
 
 ```

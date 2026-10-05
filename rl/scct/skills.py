@@ -1,0 +1,485 @@
+"""Fisher's playbook - how the owner plays, as code. Each skill is a closed loop on game memory.
+
+House style (from the player):
+  * crouched the whole game, never standing unless a skill needs it
+  * slow: 10-20% walk speed exploring, 2-5% with guards around; never 0 (stopping = letting go of W)
+  * assess threats first, then move; path offsets keep Sam out of view cones
+  * jump only when the way forward is a ledge (blocked and the goal is above)
+  * guards: get behind, grab (Space), interrogate if offered, knock out (right mouse), carry the body to a
+    dark spot nobody passes and nobody looks at, verify it stays unseen
+  * emergencies: suspicious -> freeze in shadow; alert but blind -> break line of sight and wait;
+    alert and facing close -> strike; alarm / several alert -> give up the run (reload)
+
+Every skill returns a short result string; the options environment (options_env.py) turns those into
+learnable choices, and fisher.py runs the playbook alone as a baseline.
+"""
+import json
+import math
+import os
+import time
+from collections import defaultdict, deque
+
+from .controls import LMB, RMB, click, key, mouse, tap, wheel
+from .game import Game, co
+
+FLOOR_M = 2.5
+DARK = 5.0                # LuminosityFactor at or below this = shadow
+LIT = 15.0
+SPEED = {'clear': 0.15, 'near': 0.08, 'close': 0.04, 'danger': 0.02}   # fraction of Sam's walk-speed range
+MEM_DIR = os.path.join(os.path.expanduser('~'), 'Saved Games', 'OPSAT', 'runs')
+GRABBED, KO, CARRIED = 's_Grabbed', ('s_Unconscious', 's_Stunned', 's_Groggy'), 's_Carried'
+
+
+def flat(a, b):
+    return math.hypot(a[0] - b[0], a[1] - b[1]) / 100
+
+
+def heading_to(src, dst):
+    return math.degrees(math.atan2(dst[1] - src[1], dst[0] - src[0])) % 360
+
+
+def ang_diff(a, b):
+    return (a - b + 180) % 360 - 180
+
+
+class WorldMemory:
+    """What Sam has learned about this mission: dark spots he stood in, where each guard walks and looks,
+    and body spots that turned out bad. Persisted per mission so later runs reuse it."""
+
+    def __init__(self, mission):
+        self.path = os.path.join(MEM_DIR, 'fisher_memory_%s.json' % mission)
+        self.dark, self.bad_dumps = [], []
+        self.tracks = defaultdict(lambda: deque(maxlen=600))      # guard id -> (t, x, y, z, yaw)
+        try:
+            d = json.load(open(self.path))
+            self.dark, self.bad_dumps = d.get('dark', []), d.get('bad_dumps', [])
+            for gid, pts in d.get('tracks', {}).items():
+                self.tracks[gid].extend(pts)
+        except (OSError, ValueError):
+            pass
+
+    def note(self, s, light):
+        now = time.time()
+        (x, y, z), _ = s['sam']
+        if light <= DARK and all(flat((x, y), p) > 1.5 for p in self.dark[-400:]):
+            self.dark.append([round(x), round(y), round(z), round(light, 1)])
+        for g in s['intel'].get('guards', []):
+            t = self.tracks[str(g.get('id'))]
+            if not t or now - t[-1][0] > 1.0:
+                t.append([round(now, 1), round(g['loc'][0]), round(g['loc'][1]), round(g['loc'][2]), g['yaw']])
+
+    def watched_spot(self, p, horizon_s=300, radius_m=15):
+        """Has any guard walked within 10 m of p, or had p inside his view cone within radius_m, recently?"""
+        now = time.time()
+        for pts in self.tracks.values():
+            for t, x, y, z, yaw in pts:
+                if now - t > horizon_s or abs(z - p[2]) > FLOOR_M * 100:
+                    continue
+                d = flat((x, y), p)
+                if d < 10 or (d < radius_m and abs(ang_diff(heading_to((x, y), p), yaw / 65536 * 360)) < 35):
+                    return True
+        return False
+
+    def save(self):
+        try:
+            os.makedirs(MEM_DIR, exist_ok=True)
+            json.dump({'dark': self.dark[-2000:], 'bad_dumps': self.bad_dumps,
+                       'tracks': {k: list(v)[-300:] for k, v in self.tracks.items()}}, open(self.path, 'w'))
+        except OSError:
+            pass
+
+
+class Fisher:
+    def __init__(self, game=None, log=print):
+        self.game = game or Game()
+        self.log = log
+        self.speed_ticks = None        # (current tick, ticks from slowest to fastest)
+        self.carrying = None
+        self.bodies = []               # [(x, y, z), time dropped]
+        s = self.perceive()
+        self.mem = WorldMemory(s['mission'] if s else 'unknown')
+
+    # --- perception -------------------------------------------------------------------------------
+    def perceive(self):
+        s = self.game.snapshot()
+        if not s:
+            return None
+        pawn = self.game.g.m.u32(self.game.g.players[0] + self.game.g.pawn_off)
+        s['speed_uu'] = self.game.g._f32(pawn + 744)               # Pawn.GroundSpeed
+        sam = s['sam']
+        th = []
+        for g in s['intel'].get('guards', []):
+            mood = co.guard_mood(g)[0]
+            d, bearing, dz = co.relative(sam, g['loc'])
+            th.append({'g': g, 'mood': mood, 'd': d, 'dz': dz, 'bearing': bearing,
+                       'sees': co.facing(g['loc'], g['yaw'], max(g.get('cone') or 60, 60), 3000, sam[0])
+                       and abs(dz) < FLOOR_M, 'state': g['state']})
+        s['threats'] = sorted(th, key=lambda t: t['d'])
+        if hasattr(self, 'mem'):
+            self.mem.note(s, s['light'])
+        return s
+
+    def level(self, s):
+        """Assess before moving: how dangerous is the spot right now?"""
+        live = [t for t in s['threats'] if t['mood'] not in ('DEAD', 'OUT') and abs(t['dz']) < FLOOR_M]
+        if any(t['sees'] and t['d'] < 15 and s['light'] > DARK for t in live):
+            return 'danger'
+        if any(t['d'] < 10 or (t['sees'] and t['d'] < 20) for t in live):
+            return 'close'
+        if any(t['d'] < 20 for t in live):
+            return 'near'
+        return 'clear'
+
+    def emergency(self, s, prev_alarm=0):
+        """None, or (kind, threat): abort | fight | break_los | suspicious | body_found."""
+        live = [t for t in s['threats'] if t['mood'] not in ('DEAD', 'OUT')]
+        alert = [t for t in live if t['mood'] == 'ALERT' and t['d'] < 40]
+        if s['alarm'] > prev_alarm or len(alert) >= 2:
+            return 'abort', None
+        if any(str(t['g'].get('event', '')).startswith('AI_BARK_POKE_DEAD') for t in live):
+            return 'body_found', None
+        for t in alert:
+            return ('fight' if t['sees'] and t['d'] < 6 else 'break_los'), t
+        susp = [t for t in live if t['mood'] == 'SUSPICIOUS' and t['d'] < 25]
+        if susp:
+            return 'suspicious', susp[0]
+        return None
+
+    # --- body controls -----------------------------------------------------------------------------
+    def keep_crouched(self, s):
+        if not s['crouched'] and not self.carrying:
+            self.game.release_all()
+            tap('crouch', 0.12)
+            time.sleep(0.4)
+
+    def calibrate_speed(self):
+        """Wheel from slowest to fastest, counting ticks until GroundSpeed stops rising."""
+        wheel(-40)
+        time.sleep(0.2)
+        last, ticks = self.perceive()['speed_uu'], 0
+        flat_run = 0
+        for n in range(1, 60):
+            wheel(1)
+            time.sleep(0.05)
+            v = self.perceive()['speed_uu']
+            if v > last + 0.5:
+                ticks, flat_run = n, 0
+            else:
+                flat_run += 1
+                if flat_run >= 6:
+                    break
+            last = v
+        ticks = ticks or 20                    # GroundSpeed not moving with the wheel: assume 20 steps
+        self.speed_ticks = [ticks, ticks]
+        self.log('speed: %d wheel steps from slowest to fastest' % ticks)
+
+    def set_speed(self, frac):
+        if self.speed_ticks is None:
+            self.calibrate_speed()
+        cur, top = self.speed_ticks
+        want = max(1, round(frac * top))      # never 0
+        if want != cur:
+            wheel(want - cur)
+            self.speed_ticks[0] = want
+
+    def face(self, target, s):
+        (x, y, _), yaw = s['sam']
+        err = ang_diff(heading_to((x, y), target), yaw / 65536 * 360)
+        self.game.turn(max(-40, min(40, err * 0.6)))
+        return err
+
+    # --- movement ------------------------------------------------------------------------------------
+    def offset_waypoint(self, s, target):
+        """Path offset: if the straight line to target crosses a guard's view cone within 15 m, aim for a
+        point beside the guard on his blind side instead."""
+        (x, y, z), _ = s['sam']
+        for t in s['threats']:
+            if t['mood'] in ('DEAD', 'OUT') or abs(t['dz']) > FLOOR_M or t['d'] > 15:
+                continue
+            gx, gy, _ = t['g']['loc']
+            gyaw = t['g']['yaw'] / 65536 * 360
+            # closest point of our segment to the guard
+            vx, vy = target[0] - x, target[1] - y
+            L2 = vx * vx + vy * vy or 1
+            u = max(0, min(1, ((gx - x) * vx + (gy - y) * vy) / L2))
+            px, py = x + u * vx, y + u * vy
+            if flat((px, py), (gx, gy)) < 12 and abs(ang_diff(heading_to((gx, gy), (px, py)), gyaw)) < 40:
+                back = math.radians(gyaw + 180)
+                return gx + math.cos(back) * 350, gy + math.sin(back) * 350   # 3.5 m behind him
+        return target
+
+    def climb(self):
+        """Jump only for a ledge: push forward, jump once, check Sam went up."""
+        z0 = self.perceive()['sam'][0][2]
+        key('w', False)
+        time.sleep(0.3)
+        tap('jump', 0.12)
+        time.sleep(1.4)
+        key('w', True)
+        z1 = self.perceive()['sam'][0][2]
+        ok = z1 - z0 > 50
+        self.log('climb %s (%+.0f cm)' % ('ok' if ok else 'failed', z1 - z0))
+        if ok:
+            tap('crouch', 0.12)
+        return ok
+
+    def unstick(self, s, target):
+        """Blocked: ledge above -> climb; otherwise sidestep left/right and see which way opens."""
+        if target[2] - s['sam'][0][2] > 60 and self.climb():
+            return True
+        for side in ('a', 'd'):
+            p0 = self.perceive()['sam'][0]
+            self.game.hold({side, 'w'})
+            time.sleep(0.8)
+            self.game.release_all()
+            if flat(self.perceive()['sam'][0], p0) > 0.5:
+                return True
+        self.game.turn(45)
+        return False
+
+    def move_to(self, target, budget_s=4.0, tol_m=0.8, react=True):
+        """Advance toward target (x, y, z) for up to budget_s, house style. Returns arrived | moving |
+        stuck | emergency:<kind>."""
+        t0, prev_alarm = time.monotonic(), None
+        last_p, last_t, stuck = None, time.monotonic(), 0
+        result = 'moving'
+        try:
+            while time.monotonic() - t0 < budget_s:
+                s = self.perceive()
+                if s is None:
+                    return 'dead'
+                prev_alarm = s['alarm'] if prev_alarm is None else prev_alarm
+                if react:
+                    e = self.emergency(s, prev_alarm)
+                    if e:
+                        result = 'emergency:' + e[0]
+                        break
+                if flat(s['sam'][0], target) < tol_m:
+                    result = 'arrived'
+                    break
+                self.keep_crouched(s)
+                lvl = self.level(s)
+                if lvl == 'danger':                       # lit and watched: never freeze in light
+                    self.game.release_all()
+                    result = 'emergency:exposed'
+                    break
+                self.set_speed(SPEED[lvl])
+                way = self.offset_waypoint(s, target)
+                err = self.face(way, s)
+                self.game.hold({'w'} if abs(err) < 50 else set())
+                p = s['sam'][0]
+                if last_p is not None and time.monotonic() - last_t > 1.0:
+                    if flat(p, last_p) < 0.15 and abs(err) < 50:
+                        stuck += 1
+                        if stuck >= 2:
+                            self.game.release_all()
+                            if not self.unstick(s, target):
+                                result = 'stuck'
+                                break
+                            stuck = 0
+                    else:
+                        stuck = 0
+                    last_p, last_t = p, time.monotonic()
+                elif last_p is None:
+                    last_p = p
+                time.sleep(0.1)
+        finally:
+            self.game.release_all()
+        return result
+
+    # --- hiding ---------------------------------------------------------------------------------------
+    def dark_spot(self, s, away_from=None, max_m=25):
+        (x, y, z), _ = s['sam']
+        best = None
+        for p in self.mem.dark:
+            d = flat((x, y), p)
+            if d > max_m or abs(p[2] - z) > FLOOR_M * 100:
+                continue
+            if any(t['mood'] not in ('DEAD', 'OUT') and flat(t['g']['loc'], p) < 8 for t in s['threats']):
+                continue
+            score = d - (flat(away_from, p) * 0.7 if away_from else 0)
+            if best is None or score < best[0]:
+                best = (score, p)
+        return best[1] if best else None
+
+    def hide(self, threat=None, wait_s=6.0):
+        s = self.perceive()
+        spot = self.dark_spot(s, threat['g']['loc'] if threat else None)
+        if spot:
+            self.set_speed(SPEED['close'])
+            self.move_to(spot, budget_s=8.0, react=False)
+        self.game.release_all()
+        t0 = time.monotonic()
+        while time.monotonic() - t0 < wait_s:               # hold still in the dark until it calms down
+            s = self.perceive()
+            if not self.emergency(s):
+                return 'hidden'
+            time.sleep(0.3)
+        return 'hidden_still_hot'
+
+    # --- emergency playbook -----------------------------------------------------------------------------
+    def handle(self, kind, threat):
+        if kind == 'abort':
+            return 'abort'                                   # alarm / several alert: reload the checkpoint
+        if kind == 'suspicious':
+            s = self.perceive()
+            if s['light'] > DARK:
+                return self.hide(threat)
+            # in shadow: freeze; if he walks past with his back to us, take him
+            t0 = time.monotonic()
+            while time.monotonic() - t0 < 10:
+                s = self.perceive()
+                near = [t for t in s['threats'] if t['g'].get('id') == threat['g'].get('id')]
+                if near and near[0]['d'] < 2.5 and not near[0]['sees']:
+                    return self.takedown(near[0])
+                if not self.emergency(s):
+                    return 'calm'
+                time.sleep(0.3)
+            return self.hide(threat)
+        if kind in ('break_los', 'exposed', 'body_found'):
+            return self.hide(threat, wait_s=20.0)
+        if kind == 'fight':                                  # alert, facing, close: close in and strike
+            s = self.perceive()
+            for _ in range(20):
+                t = next((t for t in s['threats'] if t['g'].get('id') == threat['g'].get('id')), None)
+                if not t or t['mood'] in ('OUT', 'DEAD'):
+                    return 'neutralised'
+                if t['d'] < 1.6:
+                    self.face(t['g']['loc'], s)
+                    click(RMB)
+                    time.sleep(0.6)
+                else:
+                    self.move_to(t['g']['loc'], budget_s=0.6, tol_m=1.4, react=False)
+                s = self.perceive()
+            return 'fight_lost'
+        return 'ignored'
+
+    # --- guards ---------------------------------------------------------------------------------------
+    def takedown_target(self, s, max_m=15):
+        """A calm, conscious guard on our level, not looking at us."""
+        for t in s['threats']:
+            if t['mood'] == 'CALM' and t['d'] < max_m and abs(t['dz']) < FLOOR_M and not t['sees'] \
+                    and t['state'] not in (GRABBED, CARRIED) + KO:
+                return t
+        return None
+
+    def takedown(self, t, interrogate=True):
+        """Get behind him (offset path), grab with Space, interrogate if offered, knock out (right mouse)."""
+        gid = t['g'].get('id')
+        t0 = time.monotonic()
+        while time.monotonic() - t0 < 30:
+            s = self.perceive()
+            cur = next((x for x in s['threats'] if x['g'].get('id') == gid), None)
+            if not cur or cur['mood'] in ('DEAD', 'OUT'):
+                return 'target_lost'
+            if cur['sees'] or cur['mood'] != 'CALM':
+                return self.handle(*(self.emergency(s) or ('suspicious', cur)))
+            gx, gy, gz = cur['g']['loc']
+            gyaw = math.radians(cur['g']['yaw'] / 65536 * 360)
+            behind = (gx - math.cos(gyaw) * 110, gy - math.sin(gyaw) * 110, gz)
+            if flat(s['sam'][0], behind) > 0.6:
+                self.set_speed(SPEED['danger'] if cur['d'] < 4 else SPEED['close'])
+                self.move_to(behind, budget_s=0.8, tol_m=0.5, react=False)
+                continue
+            self.face((gx, gy), s)
+            time.sleep(0.15)
+            tap('use', 0.1)                                  # grab
+            time.sleep(0.8)
+            held = self._guard(gid)
+            if not held or held['state'] != GRABBED:
+                self.log('grab missed (state %s)' % (held['state'] if held else '?'))
+                continue
+            if interrogate and self.prompt_rows() >= 2:      # an interrogation is on offer
+                tap('use', 0.1)
+                time.sleep(6.0)                              # let the conversation play out
+            click(RMB)                                       # non-lethal knock-out
+            time.sleep(1.2)
+            g = self._guard(gid)
+            ok = g and g['state'] in KO
+            self.log('takedown %s' % ('done' if ok else 'unclear (state %s)' % (g['state'] if g else '?')))
+            return 'ko' if ok else 'grab_unclear'
+        return 'timeout'
+
+    def _guard(self, gid):
+        s = self.perceive()
+        return next((t for t in s['threats'] if t['g'].get('id') == gid), None)
+
+    # --- bodies ---------------------------------------------------------------------------------------
+    def dump_spot(self, s, max_m=30):
+        """Dark, unwatched, away from everybody: light <= DARK where Sam stood, no guard within 15 m now,
+        no guard track within 10 m and no view cone on it in the last 5 minutes, not a known bad spot."""
+        (x, y, z), _ = s['sam']
+        best = None
+        for p in self.mem.dark:
+            d = flat((x, y), p)
+            if d > max_m or abs(p[2] - z) > FLOOR_M * 100 or p[3] > DARK - 1:
+                continue
+            if any(flat(b, p) < 6 for b in self.mem.bad_dumps):
+                continue
+            if any(t['mood'] not in ('DEAD', 'OUT') and flat(t['g']['loc'], p) < 15 for t in s['threats']):
+                continue
+            if self.mem.watched_spot(p):
+                continue
+            if best is None or d < best[0]:
+                best = (d, p)
+        return best[1] if best else None
+
+    def dump_body(self, gid):
+        s = self.perceive()
+        body = self._guard(gid)
+        if not body:
+            return 'no_body'
+        spot = self.dump_spot(s)
+        if not spot:
+            return 'no_safe_spot'                            # keep looking: explore more dark first
+        self.move_to(body['g']['loc'], budget_s=6, tol_m=1.0, react=False)
+        self.face(body['g']['loc'], self.perceive())
+        tap('use', 0.1)                                      # pick up
+        time.sleep(1.2)
+        b = self._guard(gid)
+        if not b or b['state'] != CARRIED:
+            return 'pickup_failed'
+        self.carrying = gid
+        r = self.move_to(spot, budget_s=25, tol_m=0.8)
+        tap('use', 0.1)                                      # drop
+        time.sleep(1.0)
+        self.carrying = None
+        tap('crouch', 0.12)
+        self.bodies.append((tuple(spot[:3]), time.time(), gid))
+        self.log('body dropped at %s (%s)' % (spot[:2], r))
+        return 'dumped'
+
+    def audit_bodies(self, s):
+        """Verify dumped bodies stay unseen: a guard within 8 m with the body in his cone marks the spot bad."""
+        for spot, _, gid in self.bodies:
+            for t in s['threats']:
+                if t['mood'] in ('DEAD', 'OUT'):
+                    continue
+                gx, gy, _ = t['g']['loc']
+                if flat((gx, gy), spot) < 8 and abs(ang_diff(heading_to((gx, gy), spot),
+                                                           t['g']['yaw'] / 65536 * 360)) < 35:
+                    if list(spot) not in self.mem.bad_dumps:
+                        self.mem.bad_dumps.append(list(spot))
+                        self.log('body at %s is in view: spot marked bad' % (spot[:2],))
+                    return 'body_in_view'
+        return 'ok'
+
+    # --- HUD -----------------------------------------------------------------------------------------
+    def prompt_rows(self):
+        """How many entries the top-right interaction list shows (0 = none). Reads the HUD box: rows of
+        bright text inside the frame at the top right of the game window. Calibrate on first live run."""
+        import numpy as np
+        from PIL import ImageGrab
+        import ctypes
+        import ctypes.wintypes as wt
+        r = wt.RECT()
+        ctypes.windll.user32.GetWindowRect(self.game.hwnd, ctypes.byref(r))
+        W, H = r.right - r.left, r.bottom - r.top
+        box = (r.left + int(W * .745), r.top + int(H * .11), r.left + int(W * .98), r.top + int(H * .42))
+        a = np.asarray(ImageGrab.grab(bbox=box).convert('L'), np.float32)
+        rows = (a > 170).mean(axis=1) > 0.02                # rows containing bright HUD text
+        bands = int(np.sum(rows[1:] & ~rows[:-1]))
+        return max(0, bands - 1)                             # minus the "INTERACT" header
+
+    def save(self):
+        self.mem.save()

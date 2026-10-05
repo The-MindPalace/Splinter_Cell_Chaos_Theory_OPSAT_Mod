@@ -291,6 +291,7 @@ class Game:
             pat = self.m.u32(c + P('EAIController', 'Pattern'))
             stress = enum('StressSteps', self._byte(pat + P('EPattern', 'Stress_ReactionStep'))) if pat else 'S_Casual'
             guards.append({
+                'id': c,  # AI controller address: stable for the guard's life (lets the bot follow one guard)
                 'name': self.oname(self.m.u32(pawn + O_CLASS)) or '?',
                 'loc': pose[0], 'yaw': pose[1],
                 'health': self.m.u32(pawn + P('Pawn', 'Health')) or 0,

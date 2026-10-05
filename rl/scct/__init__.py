@@ -2,3 +2,4 @@
 from gymnasium.envs.registration import register
 
 register(id='SCCTNav-v0', entry_point='scct.env:SCCTNavEnv')
+register(id='SCCTFisher-v0', entry_point='scct.options_env:SCCTFisherEnv')
