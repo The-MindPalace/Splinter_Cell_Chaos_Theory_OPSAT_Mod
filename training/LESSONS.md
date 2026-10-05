@@ -95,6 +95,16 @@ courtyards ("leave through the alcove behind the big floodlight, then pick the c
 Scanning a camo crate in the Wine Cellar (Space next to it) added the objective "Scan the SSCC bar code".
 Takedowns that time out twice on the same guard are dropped; no takedowns in no-fight rooms or map mode.
 
+**Courtyards (2026-10-06 ~01:00).** Torture room exit door EDoorInteraction46 (6478, -3636) is LOCKED:
+Space opens the PICK LOCK view; solved by lockpick.py (tap the 8 directions, the one that shakes the pins
+is held ~3.5 s to lift a pin; the view closes when all pins are up; Esc leaves it). Then Front Courtyard
+(checkpointed), Rear Courtyard (checkpointed); crates scanned on the way: ECustomObjectiveInteraction8, 10,
+16. Southwest Tower floor (server, Masse Kernels objective) is x 1121..1680, y -2162..-1285, z 1217 - 3.7 m
+above the courtyard (z 775-849) and ~5 m from its NW corner (1828, -2379). Notes: crawlspace behind the
+floodlight (+2 more counter-clockwise), or climb the pallets by the right-hand tent's crate (works: the crate
+stack at (2142, -2317) climbs to a raised passage z 922-961 running to a nook at (1588, -2547)), or the low
+way: doorway under the bright light, past the tin-roof gazebo, jump onto the roof. Not solved yet.
+
 ## Level knowledge the bot reads from memory
 
 - **AI nav mesh** (rl/scct/navmesh.py): ENavMesh objects, verts at +0x50, 60-byte triangles at +0x68
