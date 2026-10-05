@@ -177,12 +177,36 @@ class Fisher:
                        'sees': co.facing(g['loc'], g['yaw'], max(g.get('cone') or 60, 60), 3000, sam[0])
                        and abs(dz) < FLOOR_M, 'state': g['state']})
         s['threats'] = sorted(th, key=lambda t: t['d'])
+        self._learn_step(s)
         if hasattr(self, 'mem'):
             self.mem.note(s, s['light'])
             if time.monotonic() - getattr(self, 'saved_at', 0) > 30:   # survive a killed run
                 self.saved_at = time.monotonic()
                 self.mem.save()
         return s
+
+    def _learn_step(self, s):
+        """Every step Sam actually takes is proof of walkable ground (like the recorded runs, but live): link
+        the previous cell to the current one, both ways on level ground. Without this, ground walked along
+        the nav mesh never entered the explore map, and a new area dead-ended after a handful of experiments."""
+        x = getattr(self, '_xmap', None)
+        if x is None:
+            return
+        p, room = s['sam'][0], s['room']
+        c = x.visit(p, room)
+        last = getattr(self, '_last_step', None)
+        self._last_step = (c, p)
+        if not last or last[0] == c:
+            return
+        lc, lp = last
+        h = math.hypot(p[0] - lp[0], p[1] - lp[1])
+        if h > 250 or abs(p[2] - lp[2]) > 120:
+            return                                        # a jump, a fall or a reload: not a walk
+        sec = round(math.degrees(math.atan2(p[1] - lp[1], p[0] - lp[0])) / 45) % SECTORS
+        t = x.tries.setdefault((lc, sec), {'result': None, 'n': 0, 'to': None})
+        if t['result'] not in ('open', 'climb_ok'):
+            t.update(result='open', to=list(c), src='walked')
+            x._reverse(lc, sec, c)
 
     def level(self, s):
         """Assess before moving: how dangerous is the spot right now?"""
@@ -321,6 +345,15 @@ class Fisher:
         time.sleep(0.3)
         tap('jump', 0.12)
         time.sleep(1.4)
+        # on a pipe or ladder (or a tall mantle) Sam keeps rising while forward is held: keep climbing until he
+        # stops gaining height (max 8 s) - "shimmy up the wall" in the notes
+        zl, t1 = self.perceive()['sam'][0][2], time.monotonic()
+        while time.monotonic() - t1 < 8.0 and zl - z0 > 40:
+            time.sleep(0.5)
+            zn = self.perceive()['sam'][0][2]
+            if zn - zl < 15:
+                break
+            zl = zn
         key('w', True)
         z1 = self.perceive()['sam'][0][2]
         ok = z1 - z0 > 50

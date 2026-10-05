@@ -44,6 +44,7 @@ class SCCTFisherEnv(SCCTNavEnv):
             n = self.observation_space.shape[0] + len(FLAGS)
             self.observation_space = spaces.Box(-np.inf, np.inf, (n,), np.float32)
         self.dead_exits = set()     # (room, next room) pairs exploration proved unreachable
+        self._dead_run = 0
         self.reached = set()
 
     def reset(self, seed=None, options=None):
@@ -60,6 +61,7 @@ class SCCTFisherEnv(SCCTNavEnv):
             self.fisher.log('map mode: cheats (god, invisible) = %s' % (self.game.set_cheats(True),))
         self.reached = set()        # rooms entered this episode: the goal never falls back behind them
         self.td_fail = {}           # guard id -> failed takedown attempts this episode
+        self._dead_run = 0
         self.fisher._door_tries = {}             # doors tried this episode
         xm = self.fisher.explorer()
         xm.unreach.clear()                       # near-misses are per episode; the map has grown since
@@ -252,6 +254,10 @@ class SCCTFisherEnv(SCCTNavEnv):
                                                       [round(v) for v in self.prev['sam'][0]]))
             self.prev = s
             return self._obs(s, self.goal), r - 20.0, False, True, dict(info, end='fell')
+        self._dead_run = self._dead_run + 1 if note.startswith('dead_end') else 0
+        if self._dead_run >= 8:                            # exploring here is exhausted: next episode (it keeps
+            note = 'all_exits_dead'                        # everything learned, and starts at the checkpoint)
+            self._dead_run = 0
         if note == 'all_exits_dead':                        # nothing left to try from here: next episode
             self.prev = s or self.prev
             return self._obs(self.prev, self.goal), r, False, True, dict(info, end='exhausted')
