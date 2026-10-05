@@ -425,7 +425,16 @@ class Fisher:
     # --- exploration (explore.py: every attempt recorded, finite search) ------------------------------
     def explorer(self):
         if getattr(self, '_xmap', None) is None:
-            self._xmap = ExploreMap(self.perceive()['mission'] or 'unknown')
+            mission = self.perceive()['mission'] or 'unknown'
+            self._xmap = ExploreMap(mission)
+            # known-good paths: every recorded run of this mission (the player's and the bot's), cheats excluded
+            repo_runs = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+                                     'training', 'runs')
+            paths = [os.path.join(d, f) for d in (MEM_DIR, repo_runs) if os.path.isdir(d)
+                     for f in sorted(os.listdir(d)) if f.startswith(mission + '_') and f.endswith('.jsonl')]
+            self.log('explore map: %d moves learned from %d recorded runs' % (
+                self._xmap.seed_from_tracks(paths), len(paths)))
+            self._xmap.add_reverses()
         return self._xmap
 
     def _walk_sector(self, sector, max_s=2.5, min_m=0.8):
@@ -453,6 +462,32 @@ class Fisher:
             self.game.release_all()
         return 'blocked', c0, None
 
+    def _known_move(self, c, sec):
+        """Repeat a known move precisely: walk to the recorded position of the next cell; for a climb, go to
+        the exact spot it was done from, face the same way, jump. open | blocked | climb_ok | climb_fail."""
+        x = self.explorer()
+        t = x.tries[(c, sec)]
+        to = tuple(t['to'])
+        if t['result'] == 'climb_ok':
+            spot = t.get('at') or x.cells[c]['p']
+            r = self.move_to(spot, budget_s=4.0, tol_m=0.35)
+            if r.startswith('emergency'):
+                return r
+            self.game.release_all()
+            self.face_heading(t.get('yaw', sec * 360 / SECTORS))
+            z0 = self.perceive()['sam'][0][2]
+            self.climb()
+            time.sleep(0.6)
+            s = self.perceive()
+            x.visit(s['sam'][0], s['room'])
+            return 'climb_ok' if s['sam'][0][2] - z0 > 50 else 'climb_fail'
+        r = self.move_to(x.cells[to]['p'], budget_s=3.5, tol_m=0.45)
+        if r.startswith('emergency'):
+            return r
+        s = self.perceive()
+        here = x.visit(s['sam'][0], s['room'])
+        return 'open' if here == to or flat(s['sam'][0], x.cells[to]['p']) < 0.7 else 'blocked'
+
     def _climb_sector(self, sector):
         x = self.explorer()
         s = self.perceive()
@@ -474,12 +509,34 @@ class Fisher:
         here = x.visit(s['sam'][0], s['room'])
         goal_cells = {c for c, v in x.cells.items() if v.get('room') == goal_room}
         plan = x.route(here, goal_cells) if goal_cells else None
+        if not plan and goal_cells:
+            # not on a known path: step onto the nearest one that leads there (within 4 m), else explore
+            # toward it rather than toward the room's centre (which may be behind a cliff)
+            sam = s['sam'][0]
+            lead = [(flat(x.cells[c]['p'], sam) + abs(x.cells[c]['p'][2] - sam[2]) / 100, c)
+                    for c in x.leads_to(goal_cells) - goal_cells if x.unreach.get(c, 0) < 2]
+            if lead:
+                d, c = min(lead)
+                if d < 4 and abs(x.cells[c]['p'][2] - sam[2]) < 100:
+                    r = self.move_to(x.cells[c]['p'], budget_s=4.0, tol_m=0.4)
+                    if r.startswith('emergency'):
+                        return r
+                    s2 = self.perceive()
+                    if x.visit(s2['sam'][0], s2['room']) != c and flat(s2['sam'][0], x.cells[c]['p']) > 0.8:
+                        x.unreach[c] = x.unreach.get(c, 0) + 1   # twice and this cell is not offered again
+                        self.log('could not step onto known path at %s (%d)' % (c, x.unreach[c]))
+                        x.save()
+                    return 'progress'
+                target = x.cells[c]['p']
         if plan:
             for c, sec in plan[:6]:                         # walk the known way, a few moves per decision
-                r, _, _ = self._walk_sector(sec)
-                if r != 'open':
-                    x.record(c, sec, 'blocked', detail='known route failed')
+                r = self._known_move(c, sec)
+                if r.startswith('emergency'):
+                    return r
+                if r not in ('open', 'climb_ok'):
+                    x.record(c, sec, r, detail='known route failed')
                     break
+                x.record(c, sec, r, x.tries[(c, sec)]['to'], detail='known route')
             x.save()
             return 'entered' if self.perceive()['room'] == goal_room else 'progress'
         exp = x.next_experiment(here, target, climb_ok=True)

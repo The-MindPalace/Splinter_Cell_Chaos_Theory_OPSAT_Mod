@@ -83,12 +83,26 @@ def run_episode(env, decisions, ep):
     return rec
 
 
+def single_instance():
+    """Two bots fighting over Sam corrupt the run and the exploration map: refuse to start a second one.
+    The lock is held for the life of the process (released by Windows when it exits, even if killed)."""
+    import msvcrt
+    os.makedirs(OUT, exist_ok=True)
+    f = open(os.path.join(OUT, 'fisher.lock'), 'a+')
+    try:
+        msvcrt.locking(f.fileno(), msvcrt.LK_NBLCK, 1)
+    except OSError:
+        sys.exit('another fisher.py is already running (python rl/stop_bot.py stops it)')
+    return f
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--hours', type=float, default=0, help='unattended: keep running episodes this long')
     ap.add_argument('--decisions', type=int, default=200, help='decisions per episode')
     ap.add_argument('--steal-focus', action='store_true', help='bring the game back to the front (nobody at the PC)')
     args = ap.parse_args()
+    lock = single_instance()  # noqa: F841 (held until exit)
     ctypes.windll.kernel32.SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM | ES_DISPLAY)
     deadline = time.time() + args.hours * 3600
     ep, env, failures = 0, None, 0

@@ -30,6 +30,7 @@ class SCCTFisherEnv(SCCTNavEnv):
     def reset(self, seed=None, options=None):
         obs, info = super().reset(seed=seed, options=options)
         self.fisher.carrying, self.fisher.bodies = None, []
+        self.dead_exits = set()     # each episode retries every exit with what the map has learned since
         self.fisher.save()          # keep what the last episode learned (walkable ground, dark spots)
         self.dumped = set()
         self.alarm0 = self.prev['alarm']
@@ -105,6 +106,9 @@ class SCCTFisherEnv(SCCTNavEnv):
 
         s = self.game.snapshot()
         info = {'option': name, 'result': note, 'room': s['room'] if s else None}
+        if note == 'all_exits_dead':                        # nothing left to try from here: next episode
+            self.prev = s or self.prev
+            return self._obs(self.prev, self.goal), r, False, True, dict(info, end='exhausted')
         if s is None or s['health'] <= 0 or s['mission'] in (None, 'menu'):
             return self._obs(self.prev, self.goal), -100.0, True, False, dict(info, end='dead')
         if 'abort' in note or s['alarm'] > self.alarm0:

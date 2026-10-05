@@ -40,10 +40,12 @@ class ExploreMap:
         self.log_path = os.path.join(MEM_DIR, 'attempts_%s.jsonl' % mission)
         self.cells = {}        # cell -> {'p': [x, y, z], 'room': name}
         self.tries = {}        # (cell, sector) -> {'result': ..., 'n': tries, 'to': cell or None}
+        self.unreach = {}      # cell -> times Sam tried to step onto it and could not
         try:
             d = json.load(open(self.path))
             self.cells = {tuple(json.loads(k)): v for k, v in d['cells'].items()}
             self.tries = {(tuple(json.loads(k)[0]), json.loads(k)[1]): v for k, v in d['tries'].items()}
+            self.unreach = {tuple(json.loads(k)): v for k, v in d.get('unreach', {}).items()}
         except (OSError, ValueError, KeyError):
             pass
 
@@ -51,7 +53,8 @@ class ExploreMap:
         try:
             os.makedirs(MEM_DIR, exist_ok=True)
             json.dump({'cells': {json.dumps(list(k)): v for k, v in self.cells.items()},
-                       'tries': {json.dumps([list(c), s]): v for (c, s), v in self.tries.items()}},
+                       'tries': {json.dumps([list(c), s]): v for (c, s), v in self.tries.items()},
+                       'unreach': {json.dumps(list(k)): v for k, v in self.unreach.items()}},
                       open(self.path, 'w'))
         except OSError:
             pass
@@ -65,9 +68,16 @@ class ExploreMap:
     def record(self, c, sector, result, to=None, detail=''):
         t = self.tries.setdefault((c, sector), {'result': None, 'n': 0, 'to': None})
         t['n'] += 1
-        # keep the best thing learned: open/climb_ok beat blocked/climb_fail
-        if result in ('open', 'climb_ok') or t['result'] not in ('open', 'climb_ok'):
+        if result in ('open', 'climb_ok'):
+            t['fail'] = 0
+            if t['result'] not in ('open', 'climb_ok'):
+                t['result'], t['to'] = result, (list(to) if to else None)
+        elif t['result'] in ('open', 'climb_ok'):
+            t['fail'] = t.get('fail', 0) + 1           # a known move failed: twice in a row and it is dropped
+        else:
             t['result'], t['to'] = result, (list(to) if to else None)
+        if result == 'open' and to:
+            self._reverse(c, sector, tuple(to))
         try:
             with open(self.log_path, 'a', encoding='utf-8') as f:
                 f.write(json.dumps({'t': round(time.time(), 1), 'cell': list(c), 'heading': heading_of(sector),
@@ -76,10 +86,107 @@ class ExploreMap:
         except OSError:
             pass
 
+    def seed_from_tracks(self, paths, max_step_m=2.5, max_dt=3.0):
+        """Recorded runs (runlog tracks, 2 Hz) are proof of where Sam can walk: every step between two
+        consecutive samples becomes a known open move. Stretches with cheats on ('x') prove nothing and are
+        skipped. Returns the number of moves learned."""
+        n = 0
+        for path in paths:
+            n += self._seed_climbs(path)
+            prev = None
+            try:
+                lines = open(path, encoding='utf-8').readlines()
+            except OSError:
+                continue
+            for line in lines:
+                try:
+                    d = json.loads(line)
+                except ValueError:
+                    continue
+                if 'p' not in d:
+                    continue
+                if d.get('x'):
+                    prev = None
+                    continue
+                p = d['p']
+                c = self.visit(p[:3], d.get('r'))
+                if prev and d['t'] - prev[0] <= max_dt and c != prev[1]:
+                    pp = prev[2]
+                    if math.hypot(p[0] - pp[0], p[1] - pp[1]) <= max_step_m * 100 and abs(p[2] - pp[2]) < 120:
+                        sec = round(math.degrees(math.atan2(p[1] - pp[1], p[0] - pp[0])) / 45) % SECTORS
+                        moves = [(prev[1], sec, c)]
+                        if abs(p[2] - pp[2]) < 60:              # level ground walks both ways (not drops)
+                            moves.append((c, (sec + SECTORS // 2) % SECTORS, prev[1]))
+                        for frm, sc, to in moves:
+                            t = self.tries.setdefault((frm, sc), {'result': None, 'n': 0, 'to': None})
+                            if t['result'] not in ('open', 'climb_ok'):
+                                t['result'], t['to'], t['src'] = 'open', list(to), 'track'
+                                n += 1
+                prev = (d['t'], c, p)
+        return n
+
+    def _seed_climbs(self, path):
+        """Jumps in a recorded run that got Sam onto something: up 60+ cm within 1.2 s and still up 2 s later
+        (jumping on the spot lands back down and does not count). Kept as climb moves with the exact spot
+        and facing, because a ledge climb only works from the right place."""
+        try:
+            smp = [d for d in (json.loads(l) for l in open(path, encoding='utf-8')) if 'p' in d]
+        except (OSError, ValueError):
+            return 0
+        n = 0
+        for i in range(len(smp) - 1):
+            a, b = smp[i], smp[i + 1]
+            if a.get('x') or b['t'] - a['t'] > 1.2 or b['p'][2] - a['p'][2] < 60:
+                continue
+            later = next((d for d in smp[i + 1:] if d['t'] >= a['t'] + 2.0), None)
+            if not later or later['t'] - a['t'] > 4 or later['p'][2] - a['p'][2] < 60 or later.get('x'):
+                continue
+            pa, pl = a['p'], later['p']
+            if math.hypot(pl[0] - pa[0], pl[1] - pa[1]) > 300:
+                continue
+            frm, to = self.visit(pa[:3], a.get('r')), self.visit(pl[:3], later.get('r'))
+            if frm == to:
+                continue
+            yaw = (pa[3] / 65536 * 360) % 360
+            t = self.tries.setdefault((frm, round(yaw / 45) % SECTORS), {'result': None, 'n': 0, 'to': None})
+            if t['result'] != 'climb_ok':
+                t.update(result='climb_ok', to=list(to), src='track', at=pa[:3], yaw=round(yaw, 1))
+                n += 1
+        return n
+
+    def leads_to(self, goal_cells):
+        """Cells with a known walk to any goal cell (reverse search over known moves)."""
+        back = {}
+        for (c, s), t in self.tries.items():
+            if t['result'] in ('open', 'climb_ok') and t['to'] and t.get('fail', 0) < 2:
+                back.setdefault(tuple(t['to']), []).append(c)
+        seen, todo = set(goal_cells), list(goal_cells)
+        while todo:
+            for pc in back.get(todo.pop(), []):
+                if pc not in seen:
+                    seen.add(pc)
+                    todo.append(pc)
+        return seen
+
+    def _reverse(self, c, sector, to):
+        """Level ground walks both ways: walking c -> to also proves to -> c (not after a drop)."""
+        a, b = self.cells.get(c, {}).get('p'), self.cells.get(to, {}).get('p')
+        if not a or not b or abs(a[2] - b[2]) >= 60:
+            return
+        t = self.tries.setdefault((to, (sector + SECTORS // 2) % SECTORS), {'result': None, 'n': 0, 'to': None})
+        if t['result'] not in ('open', 'climb_ok'):
+            t['result'], t['to'], t['src'] = 'open', list(c), 'reverse'
+
+    def add_reverses(self):
+        """Back-fill the way back for every open walk already in the map (maps saved before this rule)."""
+        for (c, sec), t in list(self.tries.items()):
+            if t['result'] == 'open' and t['to']:
+                self._reverse(c, sec, tuple(t['to']))
+
     def edges(self, c):
         for s in range(SECTORS):
             t = self.tries.get((c, s))
-            if t and t['result'] in ('open', 'climb_ok') and t['to']:
+            if t and t['result'] in ('open', 'climb_ok') and t['to'] and t.get('fail', 0) < 2:
                 yield tuple(t['to']), s, (1.0 if t['result'] == 'open' else 3.0)
 
     def route(self, start, goal_cells):
