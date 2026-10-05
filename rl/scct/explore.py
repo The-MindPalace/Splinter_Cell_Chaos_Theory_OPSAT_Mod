@@ -66,6 +66,10 @@ class ExploreMap:
         return c
 
     def record(self, c, sector, result, to=None, detail=''):
+        if result in ('open', 'climb_ok') and to:
+            a, b = self.cells.get(c, {}).get('p'), self.cells.get(tuple(to), {}).get('p')
+            if a and b and b[2] < a[2] - 300:
+                result, detail = 'drop', (detail + ' fell %d cm' % (a[2] - b[2])).strip()
         t = self.tries.setdefault((c, sector), {'result': None, 'n': 0, 'to': None})
         t['n'] += 1
         if result in ('open', 'climb_ok'):
@@ -177,7 +181,12 @@ class ExploreMap:
             t['result'], t['to'], t['src'] = 'open', list(c), 'reverse'
 
     def add_reverses(self):
-        """Back-fill the way back for every open walk already in the map (maps saved before this rule)."""
+        """Back-fill the way back for every open walk already in the map (maps saved before this rule);
+        open moves that dropped Sam more than 3 m become drops first."""
+        for (c, sec), t in list(self.tries.items()):
+            a, b = self.cells.get(c, {}).get('p'), self.cells.get(tuple(t['to']) if t.get('to') else None, {}).get('p')
+            if t['result'] in ('open', 'climb_ok') and a and b and b[2] < a[2] - 300:
+                t['result'] = 'drop'
         for (c, sec), t in list(self.tries.items()):
             if t['result'] == 'open' and t['to']:
                 self._reverse(c, sec, tuple(t['to']))

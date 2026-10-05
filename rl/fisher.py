@@ -58,6 +58,25 @@ def relaunch():
     return ok
 
 
+def awareness(env):
+    """One line: where Sam is, on which floor, how lit, who is around him and how far."""
+    try:
+        f = env.fisher
+        s = f.perceive()
+        snap = env.game.snapshot()
+        sam = s['sam'][0]
+        nav = getattr(f, '_nav', None)
+        node = nav.locate(sam) if nav else None
+        floor = nav.names[node[0]].split('_LG')[0] if node else 'off-mesh'
+        near = sorted((t for t in s['threats'] if t['d'] < 30), key=lambda t: t['d'])[:3]
+        who = ', '.join('%s %.0fm%s' % (t['mood'].lower(), t['d'], ' sees' if t.get('sees') else '') for t in near)
+        return 'sam %d %d %d | %s | floor %s | light %.0f %s | guards: %s' % (
+            sam[0], sam[1], sam[2], s['room'], floor, snap['light'], 'crouched' if snap['crouched'] else 'STANDING',
+            who or 'none within 30 m')
+    except Exception as e:
+        return 'awareness n/a (%r)' % (e,)
+
+
 def run_episode(env, decisions, ep):
     obs, info = env.reset()
     log('episode %d start %s' % (ep, info))
@@ -68,6 +87,7 @@ def run_episode(env, decisions, ep):
         total += r
         log('%3d %-10s %-40s r %+7.2f total %+8.2f room %s' % (n, OPTIONS[a], info['result'][:40], r, total,
                                                                info['room']))
+        log('    ' + awareness(env))
         if term or trunc:
             end = info.get('end', 'time')
             break

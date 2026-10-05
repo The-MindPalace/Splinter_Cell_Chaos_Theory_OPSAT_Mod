@@ -13,6 +13,7 @@ House style (from the player):
 Every skill returns a short result string; the options environment (options_env.py) turns those into
 learnable choices, and fisher.py runs the playbook alone as a baseline.
 """
+import ctypes
 import heapq
 import json
 import math
@@ -225,9 +226,34 @@ class Fisher:
         wheel(-(SPEED_TICKS + 12))
         self.speed_ticks = [0, SPEED_TICKS]
 
+    def interact_objectives(self, reach_cm=160):
+        """Objective objects within reach (crates to scan, the server computer, file cabinet, Morgenholt):
+        face, Space, give it time. Each one once. Never with a guard within 3 m. Returns what was used."""
+        b = getattr(self, 'brief', None)
+        if b is None:
+            return None
+        s = self.perceive()
+        sam = s['sam'][0]
+        self._used = getattr(self, '_used', set())
+        for d, kind, name, q in b.near(sam, ('objective object', 'computer', 'file cabinet', 'Morgenholt'), reach_cm):
+            if name in self._used:
+                continue
+            if any(t['mood'] not in ('DEAD', 'OUT') and t['d'] < 3.0 for t in s['threats']):
+                return None
+            self._used.add(name)
+            self.face_heading(heading_to(sam[:2], q[:2]))
+            if self.press_use():
+                time.sleep(2.5)
+                self.log('used %s %s (%.0f cm away)' % (kind, name, d))
+                return kind
+        return None
+
     def set_speed(self, frac):
-        if getattr(self, 'fast', False):
-            frac = 1.0                                   # mapping mode (cheats on): full crouched pace
+        expect = getattr(getattr(self, 'brief', None), 'expect', set())
+        if 'noise' in expect:
+            frac = min(frac, SPEED['close'])             # the notes warn about footsteps here
+        elif 'guards' in expect:
+            frac = min(frac, SPEED['near'])
         if self.speed_ticks is None:
             self.calibrate_speed()
         cur, top = self.speed_ticks
@@ -236,19 +262,25 @@ class Fisher:
             wheel(want - cur)
             self.speed_ticks[0] = want
 
-    def turn_smooth(self, deg, rate=220.0):
-        """Turn the camera by deg in small steps (no snapping): about `rate` degrees per second."""
-        steps = max(1, int(abs(deg) / 3))
+    def turn_smooth(self, deg, rate=100.0):
+        """Turn the camera by deg in 1-degree steps every 10 ms (about `rate` deg/s, under 2 degrees per
+        rendered frame). Windows sleeps in 15 ms ticks unless the timer resolution is raised - without it the
+        'smooth' turn was a few 3-degree jumps with pauses, which is what looked twitchy."""
+        if not getattr(Fisher, '_timer_1ms', False):
+            ctypes.windll.winmm.timeBeginPeriod(1)
+            Fisher._timer_1ms = True
+        steps = max(1, int(round(abs(deg))))
+        dt = abs(deg) / steps / rate
         for _ in range(steps):
             self.game.turn(deg / steps)
-            time.sleep(abs(deg) / steps / rate)
+            time.sleep(dt)
 
-    def face(self, target, s, max_step=7.0):
-        """Steer toward target while walking: dead zone 4 deg, at most max_step deg per call (~70 deg/s at
-        10 calls/s), so the camera glides instead of twitching."""
+    def face(self, target, s, max_step=4.0):
+        """Steer toward target while walking: dead zone 4 deg, at most max_step deg per call, and no steering
+        within 1 m of the target (the bearing to a point underfoot swings wildly)."""
         (x, y, _), yaw = s['sam']
         err = ang_diff(heading_to((x, y), target), yaw / 65536 * 360)
-        if abs(err) > 4:
+        if abs(err) > 4 and flat((x, y), target) > 1.0:
             self.turn_smooth(max(-max_step, min(max_step, err * 0.5)))
         return err
 
@@ -369,7 +401,11 @@ class Fisher:
                     result = 'emergency:exposed'
                     break
                 self.set_speed(SPEED[lvl])
-                way = self.offset_waypoint(s, target)
+                way = target if getattr(self, 'fast', False) else self.offset_waypoint(s, target)
+                nav = getattr(self, '_nav', None)
+                if nav is not None and way is not target and nav.locate(s['sam'][0]) is not None and \
+                        nav.locate((way[0], way[1], s['sam'][0][2])) is None:
+                    way = target                         # a detour off the walkway is a fall (the chasm)
                 if self.detour and time.monotonic() < self.detour[1]:   # keep sliding along the wall
                     (x, y, _), _ = s['sam']
                     h = math.radians(heading_to((x, y), way) + self.detour[0])

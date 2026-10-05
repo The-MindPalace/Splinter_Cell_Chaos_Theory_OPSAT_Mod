@@ -14,7 +14,13 @@ import time
 
 from gymnasium import spaces
 
+import math
+
+import numpy as np
+
+from .briefing import FLAGS, Briefing
 from .env import SCCTNavEnv
+from .explore import SECTORS
 from .skills import Fisher, KO, flat
 
 OPTIONS = ['ADVANCE', 'WAIT', 'HIDE', 'TAKEDOWN', 'DUMP', 'SIDESTEP_L', 'SIDESTEP_R']
@@ -25,6 +31,16 @@ class SCCTFisherEnv(SCCTNavEnv):
         super().__init__(max_steps=max_decisions, pixels=pixels, **kw)
         self.action_space = spaces.Discrete(len(OPTIONS))
         self.fisher = Fisher(self.game, log=lambda *a: print('[fisher]', *a))
+        self.brief = Briefing(log=self.fisher.log)
+        self.fisher.brief = self.brief
+        # the agent also sees what the mission notes say to expect here (FLAGS, 0/1 each)
+        if isinstance(self.observation_space, spaces.Dict):
+            n = self.observation_space['vec'].shape[0] + len(FLAGS)
+            self.observation_space = spaces.Dict({'vec': spaces.Box(-np.inf, np.inf, (n,), np.float32),
+                                                  'img': self.observation_space['img']})
+        else:
+            n = self.observation_space.shape[0] + len(FLAGS)
+            self.observation_space = spaces.Box(-np.inf, np.inf, (n,), np.float32)
         self.dead_exits = set()     # (room, next room) pairs exploration proved unreachable
         self.reached = set()
 
@@ -32,6 +48,12 @@ class SCCTFisherEnv(SCCTNavEnv):
         obs, info = super().reset(seed=seed, options=options)
         self.fisher.carrying, self.fisher.bodies = None, []
         self.dead_exits = set()     # each episode retries every exit with what the map has learned since
+        snap = self.game.snapshot()
+        if snap:
+            new_mission = snap.get('mission') != self.brief.mission
+            self.brief.update(snap, self.game.g)
+            if new_mission:
+                self._vent_moves()
         if getattr(self, 'map_mode', False):    # mapping: invincible + invisible, so exploring cannot end it
             self.fisher.log('map mode: cheats (god, invisible) = %s' % (self.game.set_cheats(True),))
         self.reached = set()        # rooms entered this episode: the goal never falls back behind them
@@ -43,6 +65,24 @@ class SCCTFisherEnv(SCCTNavEnv):
         self.dumped = set()
         self.alarm0 = self.prev['alarm']
         return obs, info
+
+    def _vec(self, s, goal):
+        return np.concatenate([super()._vec(s, goal), np.asarray(self.brief.vector(), np.float32)])
+
+    def _vent_moves(self):
+        """Crawlspaces from the interactables: entry <-> exit as known moves that need Space."""
+        x = self.fisher.explorer()
+        n = 0
+        for a, b in self.brief.vents():
+            ca, cb = x.visit(a, None), x.visit(b, None)
+            for p, q, cp, cq in ((a, b, ca, cb), (b, a, cb, ca)):
+                sec = round(math.degrees(math.atan2(q[1] - p[1], q[0] - p[0])) / 45) % SECTORS
+                t = x.tries.setdefault((cp, sec), {'result': None, 'n': 0, 'to': None})
+                if t['result'] != 'open':
+                    t.update(result='open', to=list(cq), src='vent', use=True)
+                    n += 1
+        if n:
+            self.fisher.log('briefing: %d crawlspace moves from vent interactions' % n)
 
     def _next_room(self, route):
         """The next room to enter: the route's next room unless exploration proved it unreachable from here;
@@ -136,6 +176,18 @@ class SCCTFisherEnv(SCCTNavEnv):
 
         s = self.game.snapshot()
         info = {'option': name, 'result': note, 'room': s['room'] if s else None}
+        if s:
+            for e in self.brief.update(s):
+                if e.startswith('objective DONE'):
+                    r += 50.0                            # any objective, main or side (crate scans, files)
+            used = f.interact_objectives()
+            if used:
+                info['result'] = note = note + ' +' + used
+        if s and self.prev and self.prev['sam'][0][2] - s['sam'][0][2] > 400:
+            f.log('fell %.0f m at %s: episode over' % ((self.prev['sam'][0][2] - s['sam'][0][2]) / 100,
+                                                      [round(v) for v in self.prev['sam'][0]]))
+            self.prev = s
+            return self._obs(s, self.goal), r - 20.0, False, True, dict(info, end='fell')
         if note == 'all_exits_dead':                        # nothing left to try from here: next episode
             self.prev = s or self.prev
             return self._obs(self.prev, self.goal), r, False, True, dict(info, end='exhausted')
