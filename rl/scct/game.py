@@ -12,6 +12,8 @@ import os
 import sys
 import time
 
+import numpy as np
+
 GAME_DIR = r'C:\Program Files (x86)\Steam\steamapps\common\Splintercell Chaos Theory\CheatOverlay'
 sys.path.insert(0, GAME_DIR)
 import cheat_overlay as co  # noqa: E402  (OPSAT's memory reader)
@@ -97,6 +99,15 @@ class Game:
             'graph': getattr(self.g, 'room_graph', {}), 'rooms': getattr(self.g, 'room_world', {}),
             'markers': intel.get('objectives') or [],
         }
+
+    def frame(self, size=84):
+        """What Sam sees: the game window as a size x size grayscale image (uint8, HxWx1). The default grab
+        leaves out layered windows, so OPSAT's overlay is not in the picture."""
+        from PIL import ImageGrab
+        r = wt.RECT()
+        u32.GetWindowRect(self.hwnd, ctypes.byref(r))
+        img = ImageGrab.grab(bbox=(r.left, r.top, r.right, r.bottom)).convert('L').resize((size, size))
+        return np.asarray(img, np.uint8)[:, :, None]
 
     # --- input -----------------------------------------------------------------------------------
     def in_front(self):

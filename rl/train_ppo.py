@@ -20,7 +20,7 @@ os.makedirs(OUT, exist_ok=True)
 env = Monitor(gym.make('SCCTNav-v0', max_steps=600), os.path.join(OUT, 'monitor'))
 resume = os.path.join(OUT, 'latest.zip')
 model = PPO.load(resume, env) if os.path.exists(resume) else PPO(
-    'MlpPolicy', env, n_steps=512, batch_size=128, gamma=0.995, gae_lambda=0.95, ent_coef=0.01,
+    'MultiInputPolicy', env, n_steps=512, batch_size=128, gamma=0.995, gae_lambda=0.95, ent_coef=0.01,
     learning_rate=3e-4, verbose=1, tensorboard_log=OUT if TB else None)
 try:
     model.learn(steps, callback=CheckpointCallback(5000, OUT, 'ppo'), reset_num_timesteps=False)

@@ -37,10 +37,15 @@ class SCCTNavEnv(gym.Env):
     """
     metadata = {'render_modes': []}
 
-    def __init__(self, max_steps=1200, reset_mode='quickload', detect_ends=True):
+    def __init__(self, max_steps=1200, reset_mode='quickload', detect_ends=True, pixels=True, full_actions=False):
+        """pixels: add an 84x84 grayscale view of the game (Dict observation {'vec', 'img'}) so the policy can
+        see walls and openings. full_actions: include jump/interact (off for navigation: no hopping around)."""
         super().__init__()
-        self.observation_space = spaces.Box(-np.inf, np.inf, (OBS_DIM,), np.float32)
-        self.action_space = spaces.MultiDiscrete([len(MOVES), len(TURNS), 2, 3])
+        vec = spaces.Box(-np.inf, np.inf, (OBS_DIM,), np.float32)
+        self.pixels = pixels
+        self.observation_space = spaces.Dict({'vec': vec, 'img': spaces.Box(0, 255, (84, 84, 1), np.uint8)})             if pixels else vec
+        self.full_actions = full_actions
+        self.action_space = spaces.MultiDiscrete([len(MOVES), len(TURNS), 2] + ([3] if full_actions else []))
         self.max_steps, self.reset_mode, self.detect_ends = max_steps, reset_mode, detect_ends
         self.game = Game()
         self.has_quicksave = False
@@ -72,6 +77,10 @@ class SCCTNavEnv(gym.Env):
 
     # --- observation -----------------------------------------------------------------------------
     def _obs(self, s, goal):
+        v = self._vec(s, goal)
+        return {'vec': v, 'img': self.game.frame()} if self.pixels else v
+
+    def _vec(self, s, goal):
         (x, y, z), yaw = s['sam']
         a = yaw / 65536 * 2 * math.pi
         wx, wy, wz = goal[2][0]
@@ -147,7 +156,8 @@ class SCCTNavEnv(gym.Env):
         time.sleep(0.5)
 
     def step(self, action):
-        move, turn, crouch, act = (int(a) for a in action)
+        a = [int(x) for x in action]
+        move, turn, crouch, act = a[0], a[1], a[2], (a[3] if self.full_actions else 0)
         game = self.game
         self._guard_focus()
         game.hold(MOVES[move])

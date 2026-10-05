@@ -14,8 +14,8 @@ read. Verified 2026-10-05 in Lighthouse: smoke test passes, F8 reset returns Sam
 
 | | |
 |---|---|
-| Observation (34 floats) | goal in camera frame (right/forward/up, distance, heading sin/cos), rooms left on the route, light level, crouched, speed, blocked, alarm, health, time left; 4 nearest guards (camera-frame position, height, facing Sam, mood) |
-| Action | MultiDiscrete: move (none, W, S, A, D, W+A, W+D) x turn (-30, -10, 0, +10, +30 deg) x crouch toggle x (none, jump, interact) |
+| Observation | `img`: the game window as 84x84 grayscale (what Sam sees; OPSAT's overlay is excluded), read by a CNN; `vec`: 34 floats - goal in camera frame (right/forward/up, distance, heading sin/cos), rooms left on the route, light level, crouched, speed, blocked, alarm, health, time left; 4 nearest guards (camera-frame position, height, facing Sam, mood) |
+| Action | MultiDiscrete: move (none, W, S, A, D, W+A, W+D) x turn (-30, -10, 0, +10, +30 deg) x crouch toggle. Jump/interact only with `full_actions=True` (off for navigation, so no hopping) |
 | Reward | +1 per metre of route progress (potential-based, so it cannot be farmed), +10 per route room entered, +100 objective done, -0.01 per step, -0.02 x light while a guard within 15 m faces Sam, -5 when a guard turns suspicious, -100 detected, -100 dead |
 | Terminated | objective completed (success), detected (alert within 40 m or alarm rises), dead / mission over |
 | Truncated | step limit, or blocked for 40 steps |
@@ -42,8 +42,7 @@ capture on a locked or sleeping desktop.
 1. **Sample cost.** Real time is the bottleneck: 100k steps is about 7 hours. Plans: curriculum of short
    stages (beach -> cavern -> cellar ...), each a quicksave; then game-speed control by writing
    `LevelInfo.TimeDilation` (a memory write - opt-in, outside OPSAT, which stays read-only).
-2. **No geometry.** Memory gives no walls. The agent learns collisions from the `blocked` flag; the next
-   observation upgrade is a small grayscale frame (84x84) for a CNN policy, which the caves will need.
+2. **No geometry in memory.** Walls come from the 84x84 view (CNN) plus the `blocked` flag.
 3. **Interactions.** Objectives that need a context action (doors, switches, rescuing Morgenholt) depend on
    the interact action at the right spot; a later version reads the game's interaction prompt from memory.
 4. **Detection = episode end** for now (pure ghost). Later: allow knockouts and score by the game's stealth
