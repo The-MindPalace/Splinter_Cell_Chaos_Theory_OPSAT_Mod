@@ -447,11 +447,15 @@ class Fisher:
 
     def press_use(self):
         """Space: enter/exit a crawlspace, open a door, grab a ledge. Crawling is not crouching, so the
-        crouch keeper stands down for a while."""
+        crouch keeper stands down for a while. Never with a guard within 3 m: there Space grabs him (it
+        did, and the bot walked around holding a guard for ten minutes)."""
+        if any(t['mood'] not in ('DEAD', 'OUT') and t['d'] < 3.0 for t in self.perceive()['threats']):
+            return False
         self.game.release_all()
         tap('use', 0.1)
         time.sleep(1.6)
         self._crawl_until = time.monotonic() + 10
+        return True
 
     def _push(self, c0, start, max_s, min_m):
         x = self.explorer()
