@@ -68,7 +68,7 @@ class ExploreMap:
     def record(self, c, sector, result, to=None, detail=''):
         if result in ('open', 'climb_ok') and to:
             a, b = self.cells.get(c, {}).get('p'), self.cells.get(tuple(to), {}).get('p')
-            if a and b and b[2] < a[2] - 300:
+            if a and b and b[2] < a[2] - 600:            # survivable drops (the beach's 4 m) stay one-way moves
                 result, detail = 'drop', (detail + ' fell %d cm' % (a[2] - b[2])).strip()
         t = self.tries.setdefault((c, sector), {'result': None, 'n': 0, 'to': None})
         t['n'] += 1
@@ -185,7 +185,7 @@ class ExploreMap:
         open moves that dropped Sam more than 3 m become drops first."""
         for (c, sec), t in list(self.tries.items()):
             a, b = self.cells.get(c, {}).get('p'), self.cells.get(tuple(t['to']) if t.get('to') else None, {}).get('p')
-            if t['result'] in ('open', 'climb_ok') and a and b and b[2] < a[2] - 300:
+            if t['result'] in ('open', 'climb_ok') and a and b and b[2] < a[2] - 600:
                 t['result'] = 'drop'
         for (c, sec), t in list(self.tries.items()):
             if t['result'] == 'open' and t['to']:

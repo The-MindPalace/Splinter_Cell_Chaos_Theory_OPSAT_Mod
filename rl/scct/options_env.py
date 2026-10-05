@@ -99,6 +99,23 @@ class SCCTFisherEnv(SCCTNavEnv):
             pass
         self.fisher.log('checkpoint: quicksaved on reaching %s - episodes start here now' % room)
 
+    def _side_target(self):
+        """An unused objective object (crate to scan, file, computer) within 15 m on this floor, while the
+        briefing expects scanning here; each gets at most 8 decisions, then it is skipped."""
+        if 'scan' not in self.brief.expect:
+            return None
+        sam = self.fisher.perceive()['sam'][0]
+        used = getattr(self.fisher, '_used', set())
+        self._side_tries = getattr(self, '_side_tries', {})
+        for d, kind, name, q in self.brief.near(sam, ('objective object', 'file cabinet', 'computer'), 1500):
+            if name in used or abs(q[2] - sam[2]) > 200 or self._side_tries.get(name, 0) >= 8:
+                continue
+            self._side_tries[name] = self._side_tries.get(name, 0) + 1
+            if self._side_tries[name] == 1:
+                self.fisher.log('briefing: detour to %s %s, %.0f m away' % (kind, name, d / 100))
+            return q
+        return None
+
     def _vec(self, s, goal):
         return np.concatenate([super()._vec(s, goal), np.asarray(self.brief.vector(), np.float32)])
 
@@ -153,7 +170,10 @@ class SCCTFisherEnv(SCCTNavEnv):
             try:
                 route = self.goal[1]                     # rooms from here to the objective's room (3D map)
                 nxt = self._next_room(route) if len(route) > 1 else None
-                if nxt:                                  # next room on the way: its centre, over the mesh
+                crate = self._side_target()
+                if crate:                                # the notes say scan the crates: detour to one nearby
+                    note = f.nav_step(crate)
+                elif nxt:                                # next room on the way: its centre, over the mesh
                     target = self.game.snapshot()['rooms'].get(nxt) or self.goal[2][-1]
                     note = f.nav_step(target, room=nxt)
                     if note == 'entered':
@@ -217,7 +237,7 @@ class SCCTFisherEnv(SCCTNavEnv):
             used = f.interact_objectives()
             if used:
                 info['result'] = note = note + ' +' + used
-        if s and self.prev and self.prev['sam'][0][2] - s['sam'][0][2] > 400:
+        if s and self.prev and self.prev['sam'][0][2] - s['sam'][0][2] > 800:   # the chasm, not the beach drop
             f.log('fell %.0f m at %s: episode over' % ((self.prev['sam'][0][2] - s['sam'][0][2]) / 100,
                                                       [round(v) for v in self.prev['sam'][0]]))
             self.prev = s
