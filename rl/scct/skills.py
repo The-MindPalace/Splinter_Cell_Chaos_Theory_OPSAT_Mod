@@ -13,19 +13,24 @@ House style (from the player):
 Every skill returns a short result string; the options environment (options_env.py) turns those into
 learnable choices, and fisher.py runs the playbook alone as a baseline.
 """
+import heapq
 import json
 import math
 import os
 import time
 from collections import defaultdict, deque
 
-from .controls import LMB, RMB, click, key, mouse, tap, wheel
+from .controls import RMB, click, key, tap, wheel
 from .game import Game, co
+from .explore import ExploreMap, SECTORS, cell_of, heading_of
 
 FLOOR_M = 2.5
 DARK = 5.0                # LuminosityFactor at or below this = shadow
 LIT = 15.0
 SPEED = {'clear': 0.15, 'near': 0.08, 'close': 0.04, 'danger': 0.02}   # fraction of Sam's walk-speed range
+# Measured 2026-10-05 (crouched): the wheel moves walk speed from 0.61 to 1.22 m/s in steps and saturates
+# 8 ticks above the slowest. Speed is not readable from memory, so it is tracked open-loop from a clamp.
+SPEED_TICKS = 8
 MEM_DIR = os.path.join(os.path.expanduser('~'), 'Saved Games', 'OPSAT', 'runs')
 GRABBED, KO, CARRIED = 's_Grabbed', ('s_Unconscious', 's_Stunned', 's_Groggy'), 's_Carried'
 
@@ -50,23 +55,73 @@ class WorldMemory:
         self.path = os.path.join(MEM_DIR, 'fisher_memory_%s.json' % mission)
         self.dark, self.bad_dumps = [], []
         self.tracks = defaultdict(lambda: deque(maxlen=600))      # guard id -> (t, x, y, z, yaw)
+        self.walk = {}                 # cell -> [x, y, z]: ground Sam has stood on (70 cm cells)
+        self.frontier_fail = {}        # cell -> failed attempts to push on from there
         try:
             d = json.load(open(self.path))
             self.dark, self.bad_dumps = d.get('dark', []), d.get('bad_dumps', [])
+            self.walk = {self.cell(p): p for p in d.get('walk', [])}
+            self.frontier_fail = {tuple(json.loads(k)): v for k, v in d.get('frontier_fail', {}).items()}
             for gid, pts in d.get('tracks', {}).items():
                 self.tracks[gid].extend(pts)
         except (OSError, ValueError):
             pass
 
+    @staticmethod
+    def cell(p):
+        return (round(p[0] / 70), round(p[1] / 70), round(p[2] / 120))
+
     def note(self, s, light):
         now = time.time()
         (x, y, z), _ = s['sam']
+        c = self.cell((x, y, z))
+        if c not in self.walk:
+            self.walk[c] = [round(x), round(y), round(z)]
         if light <= DARK and all(flat((x, y), p) > 1.5 for p in self.dark[-400:]):
             self.dark.append([round(x), round(y), round(z), round(light, 1)])
         for g in s['intel'].get('guards', []):
             t = self.tracks[str(g.get('id'))]
             if not t or now - t[-1][0] > 1.0:
                 t.append([round(now, 1), round(g['loc'][0]), round(g['loc'][1]), round(g['loc'][2]), g['yaw']])
+
+    def neighbours(self, c):
+        x, y, z = c
+        for dx in (-1, 0, 1):
+            for dy in (-1, 0, 1):
+                for dz in (-1, 0, 1):
+                    n = (x + dx, y + dy, z + dz)
+                    if n != c and n in self.walk:
+                        yield n, math.hypot(dx, dy) * 0.7 + abs(dz) * 0.5
+
+    def plan(self, start, target):
+        """Frontier on known ground: the walked cell that best trades distance-to-target against path
+        length and past failures, and the path to it over walked cells. None if nothing is known."""
+        if not self.walk:
+            return None
+        sc = self.cell(start)
+        if sc not in self.walk:
+            sc = min(self.walk, key=lambda c: flat(self.walk[c], start) + abs(self.walk[c][2] - start[2]) / 100)
+        dist, prev, pq = {sc: 0.0}, {sc: None}, [(0.0, sc)]
+        while pq:
+            d, c = heapq.heappop(pq)
+            if d > dist[c] or d > 150:
+                continue
+            for n, w in self.neighbours(c):
+                if d + w < dist.get(n, 1e9):
+                    dist[n], prev[n] = d + w, c
+                    heapq.heappush(pq, (d + w, n))
+        fails = [(self.walk[f], n) for f, n in self.frontier_fail.items() if f in self.walk]
+
+        def score(c):
+            p = self.walk[c]
+            near_fail = sum(n for q, n in fails if flat(p, q) < 2.5)   # a failure taints its whole area
+            return flat(p, target) + abs(p[2] - target[2]) / 200 + 0.15 * dist[c] + 6.0 * near_fail
+        goal = min(dist, key=score)
+        path, c = [], goal
+        while c is not None:
+            path.append(self.walk[c])
+            c = prev[c]
+        return goal, path[::-1]
 
     def watched_spot(self, p, horizon_s=300, radius_m=15):
         """Has any guard walked within 10 m of p, or had p inside his view cone within radius_m, recently?"""
@@ -84,7 +139,10 @@ class WorldMemory:
         try:
             os.makedirs(MEM_DIR, exist_ok=True)
             json.dump({'dark': self.dark[-2000:], 'bad_dumps': self.bad_dumps,
-                       'tracks': {k: list(v)[-300:] for k, v in self.tracks.items()}}, open(self.path, 'w'))
+                       'tracks': {k: list(v)[-300:] for k, v in self.tracks.items()},
+                       'walk': list(self.walk.values()),
+                       'frontier_fail': {json.dumps(list(k)): v for k, v in self.frontier_fail.items()}},
+                      open(self.path, 'w'))
         except OSError:
             pass
 
@@ -93,7 +151,9 @@ class Fisher:
     def __init__(self, game=None, log=print):
         self.game = game or Game()
         self.log = log
-        self.speed_ticks = None        # (current tick, ticks from slowest to fastest)
+        self.speed_ticks = None        # [current tick above slowest, SPEED_TICKS]
+        self.detour = None             # (angle, until) - keep sliding along a wall after an escape
+        self.climb_fails = []          # spots where a climb did not work
         self.carrying = None
         self.bodies = []               # [(x, y, z), time dropped]
         s = self.perceive()
@@ -117,6 +177,9 @@ class Fisher:
         s['threats'] = sorted(th, key=lambda t: t['d'])
         if hasattr(self, 'mem'):
             self.mem.note(s, s['light'])
+            if time.monotonic() - getattr(self, 'saved_at', 0) > 30:   # survive a killed run
+                self.saved_at = time.monotonic()
+                self.mem.save()
         return s
 
     def level(self, s):
@@ -153,40 +216,44 @@ class Fisher:
             time.sleep(0.4)
 
     def calibrate_speed(self):
-        """Wheel from slowest to fastest, counting ticks until GroundSpeed stops rising."""
-        wheel(-40)
-        time.sleep(0.2)
-        last, ticks = self.perceive()['speed_uu'], 0
-        flat_run = 0
-        for n in range(1, 60):
-            wheel(1)
-            time.sleep(0.05)
-            v = self.perceive()['speed_uu']
-            if v > last + 0.5:
-                ticks, flat_run = n, 0
-            else:
-                flat_run += 1
-                if flat_run >= 6:
-                    break
-            last = v
-        ticks = ticks or 20                    # GroundSpeed not moving with the wheel: assume 20 steps
-        self.speed_ticks = [ticks, ticks]
-        self.log('speed: %d wheel steps from slowest to fastest' % ticks)
+        """Clamp to the slowest walk (the wheel saturates), then track ticks from there."""
+        wheel(-(SPEED_TICKS + 12))
+        self.speed_ticks = [0, SPEED_TICKS]
 
     def set_speed(self, frac):
         if self.speed_ticks is None:
             self.calibrate_speed()
         cur, top = self.speed_ticks
-        want = max(1, round(frac * top))      # never 0
+        want = max(0, min(top, round(frac * top)))      # 0 = slowest walk, never standing still
         if want != cur:
             wheel(want - cur)
             self.speed_ticks[0] = want
 
-    def face(self, target, s):
+    def turn_smooth(self, deg, rate=220.0):
+        """Turn the camera by deg in small steps (no snapping): about `rate` degrees per second."""
+        steps = max(1, int(abs(deg) / 3))
+        for _ in range(steps):
+            self.game.turn(deg / steps)
+            time.sleep(abs(deg) / steps / rate)
+
+    def face(self, target, s, max_step=7.0):
+        """Steer toward target while walking: dead zone 4 deg, at most max_step deg per call (~70 deg/s at
+        10 calls/s), so the camera glides instead of twitching."""
         (x, y, _), yaw = s['sam']
         err = ang_diff(heading_to((x, y), target), yaw / 65536 * 360)
-        self.game.turn(max(-40, min(40, err * 0.6)))
+        if abs(err) > 4:
+            self.turn_smooth(max(-max_step, min(max_step, err * 0.5)))
         return err
+
+    def face_heading(self, heading):
+        """Stand still and turn smoothly to an absolute heading (degrees)."""
+        for _ in range(3):
+            yaw = self.perceive()['sam'][1] / 65536 * 360
+            err = ang_diff(heading, yaw)
+            if abs(err) < 4:
+                return
+            self.turn_smooth(err)
+            time.sleep(0.1)
 
     # --- movement ------------------------------------------------------------------------------------
     def offset_waypoint(self, s, target):
@@ -220,28 +287,59 @@ class Fisher:
         ok = z1 - z0 > 50
         self.log('climb %s (%+.0f cm)' % ('ok' if ok else 'failed', z1 - z0))
         if ok:
-            tap('crouch', 0.12)
+            self.game.set_crouch(True)                # C is a toggle: check the state, never blind-tap
         return ok
 
     def unstick(self, s, target):
-        """Blocked: ledge above -> climb; otherwise sidestep left/right and see which way opens."""
-        if target[2] - s['sam'][0][2] > 60 and self.climb():
-            return True
-        for side in ('a', 'd'):
+        """Not getting closer. Walk around it first (four escape headings at full pace, then wall-follow);
+        jump only as the last resort - every walking direction blocked and the goal is above (a ledge)."""
+        (x, y, z), _ = s['sam']
+        p = (x, y, z)
+        # stuck again and again in the same few metres while the goal is above: that is a ledge
+        self.stalls = [(q, t) for q, t in getattr(self, 'stalls', []) if time.monotonic() - t < 120]
+        self.stalls.append((p, time.monotonic()))
+        ledge = target[2] - z > 120 and sum(1 for q, _ in self.stalls if flat(q, p) < 2.5) >= 3
+        if not ledge:
+            speed = self.speed_ticks[0] if self.speed_ticks else 0
+            self.set_speed(1.0)                      # test escapes at full pace, then back to sneaking
+            try:
+                if self._escape(x, y):
+                    return True
+            finally:
+                self.set_speed(speed / SPEED_TICKS)
+        if target[2] - z > 60 and not any(flat(c, p) < 1.5 for c in self.climb_fails):
+            for ang in (0, 60, -60, 120, -120):          # boxed in: the way on is up
+                self.turn_smooth(ang)
+                time.sleep(0.15)
+                if self.climb():
+                    return True
+                self.turn_smooth(-ang)
+            self.climb_fails.append(p)
+        return False
+
+    def _escape(self, x, y):
+        for ang in (55, -55, 110, -110):
+            self.turn_smooth(ang)
+            time.sleep(0.15)
             p0 = self.perceive()['sam'][0]
-            self.game.hold({side, 'w'})
-            time.sleep(0.8)
+            self.game.hold({'w'})
+            time.sleep(1.2)
             self.game.release_all()
-            if flat(self.perceive()['sam'][0], p0) > 0.5:
+            p1 = self.perceive()['sam'][0]
+            if flat(p1, p0) > 0.5:
+                self.detour = (ang * 0.6, time.monotonic() + 3.0)
+                self.log('escape %+d deg' % ang)
                 return True
-        self.game.turn(45)
+            self.turn_smooth(-ang)                   # back to the original heading before the next try
+            time.sleep(0.1)
+        self.log('boxed in at (%.0f, %.0f)' % (x, y))
         return False
 
     def move_to(self, target, budget_s=4.0, tol_m=0.8, react=True):
         """Advance toward target (x, y, z) for up to budget_s, house style. Returns arrived | moving |
         stuck | emergency:<kind>."""
         t0, prev_alarm = time.monotonic(), None
-        last_p, last_t, stuck = None, time.monotonic(), 0
+        best, best_t = None, time.monotonic()
         result = 'moving'
         try:
             while time.monotonic() - t0 < budget_s:
@@ -265,27 +363,149 @@ class Fisher:
                     break
                 self.set_speed(SPEED[lvl])
                 way = self.offset_waypoint(s, target)
+                if self.detour and time.monotonic() < self.detour[1]:   # keep sliding along the wall
+                    (x, y, _), _ = s['sam']
+                    h = math.radians(heading_to((x, y), way) + self.detour[0])
+                    way = (x + math.cos(h) * 300, y + math.sin(h) * 300)
                 err = self.face(way, s)
-                self.game.hold({'w'} if abs(err) < 50 else set())
-                p = s['sam'][0]
-                if last_p is not None and time.monotonic() - last_t > 1.0:
-                    if flat(p, last_p) < 0.15 and abs(err) < 50:
-                        stuck += 1
-                        if stuck >= 2:
-                            self.game.release_all()
-                            if not self.unstick(s, target):
-                                result = 'stuck'
-                                break
-                            stuck = 0
-                    else:
-                        stuck = 0
-                    last_p, last_t = p, time.monotonic()
-                elif last_p is None:
-                    last_p = p
+                if abs(err) > 45:                              # big turn: stop, turn on the spot
+                    self.game.release_all()
+                    self.face_heading(heading_to(s['sam'][0][:2], way))
+                    continue
+                self.game.hold({'w'} if abs(err) < 25 else set())
+                d = flat(s['sam'][0], target)                 # stuck = not getting closer, even if moving
+                if best is None or d < best - 0.25:
+                    best, best_t = d, time.monotonic()
+                elif time.monotonic() - best_t > 2.0:
+                    self.game.release_all()
+                    if not self.unstick(self.perceive(), target):
+                        result = 'stuck'
+                        break
+                    best, best_t = None, time.monotonic()
                 time.sleep(0.1)
         finally:
             self.game.release_all()
         return result
+
+    def advance(self, target, budget_s=3.0):
+        """ADVANCE with memory: push straight at the target; after a failed push, walk the known ground to
+        the best frontier and probe outward from it, biased toward the target. Failed frontiers are marked
+        so the next attempt pushes somewhere new."""
+        if getattr(self, 'blocked_target', None) != target[:2]:
+            before = flat(self.perceive()['sam'][0], target)
+            r = self.move_to(target, budget_s=budget_s)
+            gained = before - flat(self.perceive()['sam'][0], target)
+            if r == 'stuck' or (r == 'moving' and gained < 0.5):   # sliding around without getting closer
+                self.no_gain = getattr(self, 'no_gain', 0) + 1
+                if r == 'stuck' or self.no_gain >= 2:
+                    self.blocked_target, self.no_gain = target[:2], 0
+            else:
+                self.no_gain = 0
+            return r
+        s = self.perceive()
+        plan = self.mem.plan(s['sam'][0], target)
+        if not plan:
+            self.blocked_target = None
+            return self.move_to(target, budget_s=budget_s)
+        cell, path = plan
+        for wp in path[1::3][:6] + [path[-1]]:          # follow the trail (every ~2 m) to the frontier
+            r = self.move_to(wp, budget_s=4.0, tol_m=0.9)
+            if r.startswith('emergency') or r == 'dead':
+                return r
+        before = flat(self.perceive()['sam'][0], target)
+        r = self.move_to(target, budget_s=budget_s + 2)  # push on from the frontier
+        after = flat(self.perceive()['sam'][0], target)
+        if after > before - 0.5:
+            self.mem.frontier_fail[cell] = self.mem.frontier_fail.get(cell, 0) + 1
+            self.log('frontier %s failed (%d)' % (path[-1][:2], self.mem.frontier_fail[cell]))
+        else:
+            self.blocked_target = None                    # new ground: straight pushes again
+        return r
+
+    # --- exploration (explore.py: every attempt recorded, finite search) ------------------------------
+    def explorer(self):
+        if getattr(self, '_xmap', None) is None:
+            self._xmap = ExploreMap(self.perceive()['mission'] or 'unknown')
+        return self._xmap
+
+    def _walk_sector(self, sector, max_s=2.5, min_m=0.8):
+        """From where Sam stands, face the sector heading and walk; result open/blocked + where it led."""
+        x = self.explorer()
+        s = self.perceive()
+        start = s['sam'][0]
+        c0 = x.visit(start, s['room'])
+        self.face_heading(heading_of(sector))
+        self.set_speed(SPEED['near'])
+        t0 = time.monotonic()
+        self.game.hold({'w'})
+        try:
+            while time.monotonic() - t0 < max_s:
+                time.sleep(0.15)
+                s = self.perceive()
+                e = self.emergency(s)
+                if e:
+                    return 'emergency:' + e[0], c0, None
+                self.keep_crouched(s)
+                c = x.visit(s['sam'][0], s['room'])
+                if c != c0 and flat(s['sam'][0], start) >= min_m:
+                    return 'open', c0, c
+        finally:
+            self.game.release_all()
+        return 'blocked', c0, None
+
+    def _climb_sector(self, sector):
+        x = self.explorer()
+        s = self.perceive()
+        c0 = x.visit(s['sam'][0], s['room'])
+        self.face_heading(heading_of(sector))
+        ok = self.climb()
+        s = self.perceive()
+        c = x.visit(s['sam'][0], s['room'])
+        return ('climb_ok' if ok and c != c0 else 'climb_fail'), c0, (c if ok else None)
+
+    def explore_step(self, goal_room, target):
+        """One step toward entering goal_room: walk a known route if there is one, otherwise run the most
+        promising untried experiment and write down the result. Returns entered | progress | dead_end |
+        emergency:<kind>."""
+        x = self.explorer()
+        s = self.perceive()
+        if s['room'] == goal_room:
+            return 'entered'
+        here = x.visit(s['sam'][0], s['room'])
+        goal_cells = {c for c, v in x.cells.items() if v.get('room') == goal_room}
+        plan = x.route(here, goal_cells) if goal_cells else None
+        if plan:
+            for c, sec in plan[:6]:                         # walk the known way, a few moves per decision
+                r, _, _ = self._walk_sector(sec)
+                if r != 'open':
+                    x.record(c, sec, 'blocked', detail='known route failed')
+                    break
+            x.save()
+            return 'entered' if self.perceive()['room'] == goal_room else 'progress'
+        exp = x.next_experiment(here, target, climb_ok=True)
+        if not exp:
+            x.save()
+            self.log('dead end: every reachable heading tried (%s)' % x.stats())
+            return 'dead_end'
+        cell, sector, mode, path = exp
+        for c, sec in path:                                  # go to the experiment's cell over known moves
+            r, _, _ = self._walk_sector(sec)
+            if r != 'open':
+                x.record(c, sec, 'blocked', detail='path to experiment failed')
+                x.save()
+                return 'progress'
+            if r.startswith('emergency'):
+                return r
+        if mode == 'walk':
+            r, c0, to = self._walk_sector(sector)
+        else:
+            r, c0, to = self._climb_sector(sector)
+        if r.startswith('emergency'):
+            return r
+        x.record(c0, sector, r, to, detail='%s toward %s' % (mode, goal_room))
+        self.log('experiment %s heading %d from %s: %s' % (mode, heading_of(sector), c0, r))
+        x.save()
+        return 'entered' if self.perceive()['room'] == goal_room else 'progress'
 
     # --- hiding ---------------------------------------------------------------------------------------
     def dark_spot(self, s, away_from=None, max_m=25):
@@ -444,7 +664,7 @@ class Fisher:
         tap('use', 0.1)                                      # drop
         time.sleep(1.0)
         self.carrying = None
-        tap('crouch', 0.12)
+        self.game.set_crouch(True)
         self.bodies.append((tuple(spot[:3]), time.time(), gid))
         self.log('body dropped at %s (%s)' % (spot[:2], r))
         return 'dumped'

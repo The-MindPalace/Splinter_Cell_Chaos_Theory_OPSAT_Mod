@@ -121,6 +121,7 @@ class SCCTNavEnv(gym.Env):
             raise RuntimeError('no pending objective with a map beacon')
         self.t, self.speed, self.blocked, self.still = 0, 0.0, False, 0
         self.prev, self.phi = s, self._potential(s, self.goal)
+        self.best_rooms = len(self.goal[1])
         self.done_objs = {o[0] for o in s['objs'] if o[1] == 1}
         self.susp = self._suspicious(s)
         return self._obs(s, self.goal), {'room': s['room'], 'goal_room': self.goal[0].get('room')}
@@ -161,8 +162,11 @@ class SCCTNavEnv(gym.Env):
         game = self.game
         self._guard_focus()
         game.hold(MOVES[move])
-        if TURNS[turn]:
-            game.turn(TURNS[turn])
+        if TURNS[turn]:                       # glide, never snap: 3-degree steps
+            n = max(1, int(abs(TURNS[turn]) / 3))
+            for _ in range(n):
+                game.turn(TURNS[turn] / n)
+                time.sleep(0.012)
         if crouch:
             tap('crouch', 0.06)
         if act == 1:
@@ -196,7 +200,8 @@ class SCCTNavEnv(gym.Env):
             if new_goal[0]['objective'] != self.goal[0]['objective']:
                 self.goal, self.phi = new_goal, self._potential(s, new_goal)
             else:
-                if len(new_goal[1]) < len(self.goal[1]):
+                if len(new_goal[1]) < self.best_rooms:   # closest room to the goal so far: paid once
+                    self.best_rooms = len(new_goal[1])
                     r += 10.0                               # entered the next room on the route
                 self.goal = new_goal
                 phi = self._potential(s, self.goal)

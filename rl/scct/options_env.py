@@ -12,7 +12,6 @@ or several alert guards ends the episode (the player's rule: reload).
 """
 import time
 
-import numpy as np
 from gymnasium import spaces
 
 from .env import SCCTNavEnv
@@ -30,6 +29,7 @@ class SCCTFisherEnv(SCCTNavEnv):
     def reset(self, seed=None, options=None):
         obs, info = super().reset(seed=seed, options=options)
         self.fisher.carrying, self.fisher.bodies = None, []
+        self.fisher.save()          # keep what the last episode learned (walkable ground, dark spots)
         self.dumped = set()
         self.alarm0 = self.prev['alarm']
         return obs, info
@@ -44,7 +44,11 @@ class SCCTFisherEnv(SCCTNavEnv):
         r, note = -0.05, ''
         s = self.prev
         if name == 'ADVANCE':
-            note = f.move_to(self.goal[2][0], budget_s=3.0)
+            route = self.goal[1]                         # rooms from here to the objective's room
+            if len(route) > 1:                           # next room: explore until we enter it
+                note = f.explore_step(route[1], self.game.snapshot()['rooms'].get(route[1], self.goal[2][0]))
+            else:                                        # in the objective's room: walk to the beacon
+                note = f.move_to(self.goal[2][-1], budget_s=3.0)
         elif name == 'WAIT':
             self.game.release_all()
             time.sleep(1.5)
@@ -89,7 +93,8 @@ class SCCTFisherEnv(SCCTNavEnv):
             return self._obs(s, self.goal), r + 100.0, True, False, dict(info, end='objective')
         new_goal = self._goal(s)
         if new_goal and new_goal[0]['objective'] == self.goal[0]['objective']:
-            if len(new_goal[1]) < len(self.goal[1]):
+            if len(new_goal[1]) < self.best_rooms:   # closest room to the goal so far: paid once
+                self.best_rooms = len(new_goal[1])
                 r += 10.0
             self.goal = new_goal
             phi = self._potential(s, self.goal)
