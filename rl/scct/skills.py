@@ -196,6 +196,8 @@ class Fisher:
 
     def emergency(self, s, prev_alarm=0):
         """None, or (kind, threat): abort | fight | break_los | suspicious | body_found."""
+        if getattr(self, 'fast', False):
+            return None                                  # mapping mode: invisible + invincible, nothing to react to
         live = [t for t in s['threats'] if t['mood'] not in ('DEAD', 'OUT')]
         alert = [t for t in live if t['mood'] == 'ALERT' and t['d'] < 40]
         if s['alarm'] > prev_alarm or len(alert) >= 2:
@@ -211,6 +213,8 @@ class Fisher:
 
     # --- body controls -----------------------------------------------------------------------------
     def keep_crouched(self, s):
+        if time.monotonic() < getattr(self, '_crawl_until', 0):
+            return                                   # in a crawlspace Sam is not 'crouched'; C would stand him up
         if not s['crouched'] and not self.carrying:
             self.game.release_all()
             tap('crouch', 0.12)
@@ -360,7 +364,7 @@ class Fisher:
                     break
                 self.keep_crouched(s)
                 lvl = self.level(s)
-                if lvl == 'danger':                       # lit and watched: never freeze in light
+                if lvl == 'danger' and not getattr(self, 'fast', False):   # lit and watched: never freeze in light
                     self.game.release_all()
                     result = 'emergency:exposed'
                     break
@@ -441,14 +445,16 @@ class Fisher:
             self.log('explore map: %d neighbouring-cell guesses' % self._xmap.add_adjacent())
         return self._xmap
 
-    def _walk_sector(self, sector, max_s=2.5, min_m=0.8):
-        """From where Sam stands, face the sector heading and walk; result open/blocked + where it led."""
+    def press_use(self):
+        """Space: enter/exit a crawlspace, open a door, grab a ledge. Crawling is not crouching, so the
+        crouch keeper stands down for a while."""
+        self.game.release_all()
+        tap('use', 0.1)
+        time.sleep(1.6)
+        self._crawl_until = time.monotonic() + 10
+
+    def _push(self, c0, start, max_s, min_m):
         x = self.explorer()
-        s = self.perceive()
-        start = s['sam'][0]
-        c0 = x.visit(start, s['room'])
-        self.face_heading(heading_of(sector))
-        self.set_speed(SPEED['near'])
         t0 = time.monotonic()
         self.game.hold({'w'})
         try:
@@ -457,14 +463,33 @@ class Fisher:
                 s = self.perceive()
                 e = self.emergency(s)
                 if e:
-                    return 'emergency:' + e[0], c0, None
+                    return 'emergency:' + e[0], None
                 self.keep_crouched(s)
                 c = x.visit(s['sam'][0], s['room'])
                 if c != c0 and flat(s['sam'][0], start) >= min_m:
-                    return 'open', c0, c
+                    return 'open', c
         finally:
             self.game.release_all()
-        return 'blocked', c0, None
+        return 'blocked', None
+
+    def _walk_sector(self, sector, max_s=2.5, min_m=0.8):
+        """From where Sam stands, face the sector heading and walk; if blocked, try Space once (crawlspaces,
+        doors) and walk again. Result open/blocked + where it led; self.used_use says whether Space did it."""
+        x = self.explorer()
+        s = self.perceive()
+        start = s['sam'][0]
+        c0 = x.visit(start, s['room'])
+        self.face_heading(heading_of(sector))
+        self.set_speed(SPEED['near'])
+        self.used_use = False
+        r, c = self._push(c0, start, max_s, min_m)
+        if r == 'blocked':
+            self.press_use()
+            r, c = self._push(c0, start, max_s, min_m)
+            self.used_use = r == 'open'
+            if self.used_use:
+                self.log('Space opened the way (heading %d)' % heading_of(sector))
+        return r, c0, c
 
     def _known_move(self, c, sec):
         """Repeat a known move precisely: walk to the recorded position of the next cell; for a climb, go to
@@ -490,7 +515,20 @@ class Fisher:
             return r
         s = self.perceive()
         here = x.visit(s['sam'][0], s['room'])
-        return 'open' if here == to or flat(s['sam'][0], x.cells[to]['p']) < 0.7 else 'blocked'
+        if here == to or flat(s['sam'][0], x.cells[to]['p']) < 0.7:
+            return 'open'
+        # blocked: a crawlspace or door wants Space (known for this move, or worth one try)
+        self.face_heading(heading_to(s['sam'][0][:2], x.cells[to]['p'][:2]))
+        self.press_use()
+        r = self.move_to(x.cells[to]['p'], budget_s=3.5, tol_m=0.45)
+        if r.startswith('emergency'):
+            return r
+        s = self.perceive()
+        here = x.visit(s['sam'][0], s['room'])
+        if here == to or flat(s['sam'][0], x.cells[to]['p']) < 0.7:
+            t['use'] = True
+            return 'open'
+        return 'blocked'
 
     def _climb_sector(self, sector):
         x = self.explorer()
@@ -600,7 +638,9 @@ class Fisher:
             r, c0, to = self._climb_sector(sector)
         if r.startswith('emergency'):
             return r
-        x.record(c0, sector, r, to, detail='%s toward %s' % (mode, label))
+        x.record(c0, sector, r, to, detail='%s toward %s%s' % (mode, label, ' (Space)' if getattr(self, 'used_use', False) else ''))
+        if getattr(self, 'used_use', False) and (c0, sector) in x.tries:
+            x.tries[(c0, sector)]['use'] = True
         self.log('experiment %s heading %d from %s: %s' % (mode, heading_of(sector), c0, r))
         x.save()
         s = self.perceive()
@@ -616,7 +656,16 @@ class Fisher:
         return self._nav
 
     def _follow(self, pts, n=4):
-        """Walk a few mesh waypoints, house style. arrived | progress | stuck | emergency:<kind>."""
+        """Walk a few mesh waypoints, house style. arrived | progress | stuck | emergency:<kind>.
+        Mesh paths have a waypoint at every triangle edge (20-30 cm apart): drop the ones Sam is already at
+        and keep one every ~1.5 m, or every waypoint 'arrives' at once and Sam never moves."""
+        sam = self.perceive()['sam'][0]
+        thin, last = [], sam
+        for i, p in enumerate(pts):
+            if flat(p, last) >= 1.5 or i == len(pts) - 1:
+                thin.append(p)
+                last = p
+        pts = [p for p in thin if flat(p, sam) > 0.7] or pts[-1:]
         r = 'progress'
         for wp in pts[:n]:
             r = self.move_to(wp, budget_s=4.0, tol_m=0.6)
@@ -696,6 +745,9 @@ class Fisher:
         if spot:
             self.set_speed(SPEED['close'])
             self.move_to(spot, budget_s=8.0, react=False)
+        else:                                            # no known shadow nearby: back off the way we came
+            self.game.hold({'s'})
+            time.sleep(1.5)
         self.game.release_all()
         t0 = time.monotonic()
         while time.monotonic() - t0 < wait_s:               # hold still in the dark until it calms down

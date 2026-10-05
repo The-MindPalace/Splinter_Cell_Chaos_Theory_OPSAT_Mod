@@ -133,7 +133,7 @@ class SCCTFisherEnv(SCCTNavEnv):
             return self._obs(self.prev, self.goal), r, False, True, dict(info, end='exhausted')
         if s is None or s['health'] <= 0 or s['mission'] in (None, 'menu'):
             return self._obs(self.prev, self.goal), -100.0, True, False, dict(info, end='dead')
-        if 'abort' in note or s['alarm'] > self.alarm0:
+        if ('abort' in note or s['alarm'] > self.alarm0) and not getattr(self, 'map_mode', False):
             self.prev = s
             return self._obs(s, self.goal), r - 100.0, True, False, dict(info, end='detected')
         if f.audit_bodies(f.perceive()) == 'body_in_view':
