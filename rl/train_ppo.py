@@ -16,7 +16,8 @@ except ImportError:
 
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'runs')
 steps = int(sys.argv[1]) if len(sys.argv) > 1 else 100_000
-env = Monitor(gym.make('SCCTNav-v0', max_steps=600), OUT)
+os.makedirs(OUT, exist_ok=True)
+env = Monitor(gym.make('SCCTNav-v0', max_steps=600), os.path.join(OUT, 'monitor'))
 resume = os.path.join(OUT, 'latest.zip')
 model = PPO.load(resume, env) if os.path.exists(resume) else PPO(
     'MlpPolicy', env, n_steps=512, batch_size=128, gamma=0.995, gae_lambda=0.95, ent_coef=0.01,

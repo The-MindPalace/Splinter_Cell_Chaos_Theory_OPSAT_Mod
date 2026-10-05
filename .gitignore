@@ -14,3 +14,4 @@ tools/bot/live/
 tools/bot/__pycache__/
 rl/runs/
 rl/**/__pycache__/
+rl/*.monitor.csv
