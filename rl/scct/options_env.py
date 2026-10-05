@@ -60,6 +60,7 @@ class SCCTFisherEnv(SCCTNavEnv):
             self.fisher.log('map mode: cheats (god, invisible) = %s' % (self.game.set_cheats(True),))
         self.reached = set()        # rooms entered this episode: the goal never falls back behind them
         self.td_fail = {}           # guard id -> failed takedown attempts this episode
+        self.fisher._door_tries = {}             # doors tried this episode
         xm = self.fisher.explorer()
         xm.unreach.clear()                       # near-misses are per episode; the map has grown since
         for t in xm.tries.values():              # so are failures of known moves: two per episode, then
@@ -103,7 +104,11 @@ class SCCTFisherEnv(SCCTNavEnv):
     def _side_target(self):
         """An unused objective object (crate to scan, file, computer) within 15 m on this floor, while the
         briefing expects scanning here; each gets at most 8 decisions, then it is skipped."""
-        kinds = ('Morgenholt', 'computer') + (('objective object', 'file cabinet') if 'scan' in self.brief.expect else ())
+        b = self.brief
+        open_text = ' '.join(b.texts.get(k, '') for k, st in b.status.items() if st == 0).lower()
+        kinds = (('Morgenholt',) if 'morgenholt' in open_text else ()) +             (('computer',) if any(w in open_text for w in ('information', 'data', 'kernel', 'server')) else ()) +             (('objective object', 'file cabinet') if 'scan' in b.expect else ())   # only for objectives still open
+        if not kinds:
+            return None
         sam = self.fisher.perceive()['sam'][0]
         used = getattr(self.fisher, '_used', set())
         self._side_tries = getattr(self, '_side_tries', {})

@@ -497,8 +497,9 @@ class Fisher:
         return True
 
     def open_door_near(self, radius_cm=250):
-        """A door within reach (interactables list): face it, pick 'Open door stealth' (one wheel notch down in
-        the interaction menu), Space. The wheel is also walk speed, so speed is re-calibrated afterwards."""
+        """A door within reach (interactables list): face it, Space (the first option: OPEN DOOR; the wheel does
+        not move the selection). A locked door shows PICK LOCK first and opens the lock view: solved by
+        lockpick.pick_lock(), then Space opens the door. At most 3 tries per door per episode."""
         b = getattr(self, 'brief', None)
         if b is None:
             return False
@@ -507,15 +508,31 @@ class Fisher:
         if not near or any(t['mood'] not in ('DEAD', 'OUT') and t['d'] < 3.0 for t in s['threats']):
             return False
         d, _, name, q = near[0]
+        self._door_tries = getattr(self, '_door_tries', {})
+        if self._door_tries.get(name, 0) >= 3:           # this door beat us three times this episode
+            return False
+        self._door_tries[name] = self._door_tries.get(name, 0) + 1
+        from .lockpick import _centre, _screen, pick_lock
         self.game.release_all()
         self.face_heading(heading_to(s['sam'][0][:2], q[:2]))
         time.sleep(0.3)
-        wheel(-1)                                        # OPEN DOOR -> OPEN DOOR STEALTH
-        time.sleep(0.3)
-        tap('use', 0.1)
-        time.sleep(2.5)
-        self.speed_ticks = None                          # the wheel notch may have changed the walk speed
-        self.log('opened door %s stealthily (%.0f cm away)' % (name, d))
+        before = _centre(_screen())
+        tap('use', 0.1)                                  # first option: OPEN DOOR, or PICK LOCK on a locked one
+        time.sleep(1.6)
+        after = _centre(_screen())
+        lit = sum(after.getdata()) / (120 * 110) - sum(before.getdata()) / (120 * 110)
+        if lit > 25:                                     # the bright lock view: a locked door - pick it, quietly
+            self.log('door %s is locked: picking the lock' % name)
+            if pick_lock(budget_s=150, log=self.log):
+                time.sleep(0.8)
+                tap('use', 0.1)                          # now it opens
+                time.sleep(2.0)
+            else:
+                tap('esc', 0.1)                          # give up the lock view (Esc leaves it)
+                time.sleep(1.0)
+                return False
+        self.speed_ticks = None
+        self.log('opened door %s (%.0f cm away)' % (name, d))
         return True
 
     def _push(self, c0, start, max_s, min_m):
