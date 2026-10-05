@@ -685,9 +685,16 @@ class Fisher:
             # (e.g. the recorded route up into the Cavern), and explore onward from there
             dist, _ = x.reachable(here)
             near_t = lambda p: math.hypot(p[0] - target[0], p[1] - target[1]) + 2 * abs(p[2] - target[2])
-            best = min(dist, key=lambda c: near_t(x.cells[c]['p']) if c in x.cells else 1e18)
-            if best != here and best in x.cells and near_t(x.cells[best]['p']) < near_t(sam) - 200:
-                plan = x.route(here, {best})
+            best = min((c for c in dist if c in x.cells and x.unreach.get(c, 0) < 2),
+                       key=lambda c: near_t(x.cells[c]['p']), default=here)
+            if best != here and near_t(x.cells[best]['p']) < near_t(sam) - 200:
+                self._approach = getattr(self, '_approach', {})
+                self._approach[best] = self._approach.get(best, 0) + 1
+                if self._approach[best] > 6:             # six decisions and still not there: give up on it
+                    x.unreach[best] = 2
+                    self.log('could not reach known spot %s nearest the target: exploring from here' % (best,))
+                else:
+                    plan = x.route(here, {best})
         if not plan and goal_cells and not stuck:
             # standing within 1 m of a known cell counts as being on it (cell boundaries are arbitrary)
             near = sorted((flat(v['p'], sam), c) for c, v in x.cells.items()
@@ -716,6 +723,12 @@ class Fisher:
                         x.save()
                     return 'progress'
                 target = x.cells[c]['p']
+        self._branch = 'plan' if plan else 'explore'
+        if getattr(self, '_last_branch_log', 0) + 20 < time.monotonic():   # a trace every ~20 s
+            self._last_branch_log = time.monotonic()
+            self.log('explore_to %s: branch %s, target %s (%.0f m away, %+.0f m up), goal cells %d' % (
+                label, self._branch, [round(v) for v in target], flat(sam, target), (target[2] - sam[2]) / 100,
+                len(goal_cells)))
         if plan:
             for c, sec in plan[:6]:                         # walk the known way, a few moves per decision
                 r = self._known_move(c, sec)
@@ -728,7 +741,44 @@ class Fisher:
             x.save()
             s = self.perceive()
             return 'entered' if is_goal(s['sam'][0], s['room']) else 'progress'
-        exp = (stuck and x.next_experiment(here, target, climb_ok=True, only_start=True)) or             x.next_experiment(here, target, climb_ok=True, room=s['room'])
+        exp = (stuck and x.next_experiment(here, target, climb_ok=True, only_start=True)) or             x.next_experiment(here, target, climb_ok=True, room=s['room'], novelty=getattr(self, 'novelty', False))
+        if (not exp or getattr(self, 'novelty', False) or flat(sam, target) < 10) and target[2] - sam[2] > 200:
+            sv = x.climb_survey(here, target)
+            if sv:
+                cell, sector, path = sv
+                for c, sec in path:                      # walk to the survey spot over known moves
+                    r = self._known_move(c, sec)
+                    if r.startswith('emergency'):
+                        return r
+                    if r not in ('open', 'climb_ok'):
+                        x.record(c, sec, r, detail='path to climb survey failed')
+                        x.unreach[cell] = x.unreach.get(cell, 0) + 1
+                        x.save()
+                        return 'progress'
+                s2 = self.perceive()
+                c0 = x.visit(s2['sam'][0], s2['room'])
+                if c0 == cell:
+                    # standing at the survey spot: try every untried heading here in one go (one per decision
+                    # took hours); stop as soon as one gets Sam up
+                    for sec in [sector] + [k for k in range(SECTORS) if k != sector and (cell, k) not in x.climbed]:
+                        s2 = self.perceive()
+                        if x.visit(s2['sam'][0], s2['room']) != cell:
+                            break                                # a failed climb moved him off the spot
+                        self.face_heading(heading_of(sec))
+                        z0 = s2['sam'][0][2]
+                        self.climb()
+                        s3 = self.perceive()
+                        ok = s3['sam'][0][2] - z0 > 60
+                        x.record_climb(cell, sec, ok, x.visit(s3['sam'][0], s3['room']) if ok else None)
+                        self.log('climb survey heading %d from %s: %s (%+.0f cm)' % (heading_of(sec), cell,
+                                                                                      'ok' if ok else 'no', s3['sam'][0][2] - z0))
+                        if ok:
+                            break
+                    x.save()
+                    s3 = self.perceive()
+                    return 'entered' if is_goal(s3['sam'][0], s3['room']) else 'progress'
+                x.unreach[cell] = x.unreach.get(cell, 0) + 1
+                return 'progress'
         if not exp:
             x.save()
             self.log('dead end: every reachable heading tried (%s)' % x.stats())

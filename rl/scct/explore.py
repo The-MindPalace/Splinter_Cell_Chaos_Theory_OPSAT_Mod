@@ -15,6 +15,7 @@ Rules:
   * the map persists per mission: the next episode starts with everything learned, failures included
 """
 import heapq
+import random
 import json
 import math
 import os
@@ -41,11 +42,13 @@ class ExploreMap:
         self.cells = {}        # cell -> {'p': [x, y, z], 'room': name}
         self.tries = {}        # (cell, sector) -> {'result': ..., 'n': tries, 'to': cell or None}
         self.unreach = {}      # cell -> times Sam tried to step onto it and could not
+        self.climbed = {}      # (cell, sector) -> 'climb_ok' | 'climb_fail' from climb surveys
         try:
             d = json.load(open(self.path))
             self.cells = {tuple(json.loads(k)): v for k, v in d['cells'].items()}
             self.tries = {(tuple(json.loads(k)[0]), json.loads(k)[1]): v for k, v in d['tries'].items()}
             self.unreach = {tuple(json.loads(k)): v for k, v in d.get('unreach', {}).items()}
+            self.climbed = {(tuple(json.loads(k)[0]), json.loads(k)[1]): v for k, v in d.get('climbed', {}).items()}
         except (OSError, ValueError, KeyError):
             pass
 
@@ -54,7 +57,8 @@ class ExploreMap:
             os.makedirs(MEM_DIR, exist_ok=True)
             json.dump({'cells': {json.dumps(list(k)): v for k, v in self.cells.items()},
                        'tries': {json.dumps([list(c), s]): v for (c, s), v in self.tries.items()},
-                       'unreach': {json.dumps(list(k)): v for k, v in self.unreach.items()}},
+                       'unreach': {json.dumps(list(k)): v for k, v in self.unreach.items()},
+                       'climbed': {json.dumps([list(c), s]): v for (c, s), v in self.climbed.items()}},
                       open(self.path, 'w'))
         except OSError:
             pass
@@ -249,7 +253,7 @@ class ExploreMap:
                     heapq.heappush(pq, (d + w, n))
         return dist, prev
 
-    def next_experiment(self, start, target, climb_ok, room=None, only_start=False):
+    def next_experiment(self, start, target, climb_ok, room=None, only_start=False, novelty=False):
         """The untried (cell, heading) most likely to get closer to target, among cells reachable over known
         moves. Returns (cell, sector, mode, path_to_cell) or None when everything reachable is exhausted."""
         dist, prev = self.reachable(start)
@@ -270,6 +274,9 @@ class ExploreMap:
                 else:
                     continue
                 cost = gain + 0.4 * d + (1.5 if t else 0.0) + (2.0 if mode == 'climb' else 0.0)
+                if novelty:                            # stuck near the goal for a whole episode: spread out -
+                    untried = sum(1 for k in range(SECTORS) if (c, k) not in self.tries)
+                    cost = 0.15 * d - 2.0 * untried + random.random() * 12   # unexplored cells anywhere
                 if room and self.cells[c].get('room') != room:
                     cost += 30.0                       # explore the frontier room, not the ground behind it
                 if best is None or cost < best[0]:
@@ -283,6 +290,44 @@ class ExploreMap:
             path.append((pc, ps))
             x = pc
         return c, s, mode, path[::-1]
+
+    def climb_survey(self, start, target, radius_cm=1200):
+        """The goal is well above and walking is exhausted: the untried climb (cell, heading) nearest the goal
+        among known cells within radius_cm of it that Sam can walk to. (cell, sector, path) or None."""
+        dist, prev = self.reachable(start)
+        best = None
+        for c, d in dist.items():
+            p = self.cells.get(c, {}).get('p')
+            if not p or math.hypot(p[0] - target[0], p[1] - target[1]) > radius_cm or target[2] - p[2] < 150:
+                continue
+            if c != start and self.unreach.get(c, 0) >= 2:   # could not get there twice this episode
+                continue
+            for s in range(SECTORS):
+                if (c, s) in self.climbed:
+                    continue
+                h = math.radians(heading_of(s))
+                ahead = (p[0] + math.cos(h) * 100, p[1] + math.sin(h) * 100)
+                cost = math.hypot(target[0] - ahead[0], target[1] - ahead[1]) / 100 + 0.2 * d
+                if best is None or cost < best[0]:
+                    best = (cost, c, s)
+        if not best:
+            return None
+        _, c, s = best
+        path, x = [], c
+        while prev[x]:
+            pc, ps = prev[x]
+            path.append((pc, ps))
+            x = pc
+        return c, s, path[::-1]
+
+    def record_climb(self, c, sector, ok, to=None):
+        self.climbed[(c, sector)] = 'climb_ok' if ok else 'climb_fail'
+        if ok and to and tuple(to) != c:                 # a climb that worked is a known move from now on
+            p = self.cells.get(c, {}).get('p')
+            key = (c, sector)
+            t = self.tries.setdefault(key, {'result': None, 'n': 0, 'to': None})
+            if t['result'] != 'climb_ok':
+                t.update(result='climb_ok', to=list(to), src='survey', at=p, yaw=heading_of(sector))
 
     def stats(self):
         res = {}

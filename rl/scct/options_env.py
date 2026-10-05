@@ -63,7 +63,14 @@ class SCCTFisherEnv(SCCTNavEnv):
         self.td_fail = {}           # guard id -> failed takedown attempts this episode
         self._dead_run = 0
         self.fisher._door_tries = {}             # doors tried this episode
+        self.fisher._approach = {}               # approaches to the known spot nearest a target
         xm = self.fisher.explorer()
+        n = len(xm.cells)
+        # an episode that added almost no ground: explore for novelty next time, not toward the goal
+        self.fisher.novelty = getattr(self, '_cells_at_start', None) is not None and n - self._cells_at_start < 8
+        if self.fisher.novelty:
+            self.fisher.log('no new ground last episode (%d cells): exploring for novelty' % n)
+        self._cells_at_start = n
         xm.unreach.clear()                       # near-misses are per episode; the map has grown since
         for t in xm.tries.values():              # so are failures of known moves: two per episode, then
             t['fail'] = 0                        # dropped until the next one (an imprecise climb is not a wall)
