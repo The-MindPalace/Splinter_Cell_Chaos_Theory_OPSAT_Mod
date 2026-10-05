@@ -86,6 +86,14 @@ Two guards chat near (5404, -2626) at the end of the bridge area.
 z 850-917 at (6920-7012, -3988) - the top of the Ampitheatre ramp. The bot circled the doorway for 100+
 decisions without trying it (its experiments were blocked by the door frame); walking straight east does it.
 From the top: "Get down into the torture chamber unseen" (Morgenholt at (7911, -4073, 649)).
+At the top of the stairs a closed DOOR (EDoorInteraction47, (7268, -4280)) blocks the mesh path south:
+INTERACT offers Open door / Open door stealth / Bash door / Optic cable. One wheel notch down then Space =
+open stealthily (the bot does this now when stuck near a door). Then the ramp runs south and down
+(z 883 -> 560) and back north into the torture chamber (7700, -3900, z 622). Reaching Morgenholt fails
+"Rescue Morgenholt" by script - he cannot be saved (the notes say so); the mission moves on to the
+courtyards ("leave through the alcove behind the big floodlight, then pick the courtyard door lock").
+Scanning a camo crate in the Wine Cellar (Space next to it) added the objective "Scan the SSCC bar code".
+Takedowns that time out twice on the same guard are dropped; no takedowns in no-fight rooms or map mode.
 
 ## Level knowledge the bot reads from memory
 

@@ -331,7 +331,10 @@ class Fisher:
 
     def unstick(self, s, target):
         """Not getting closer. Walk around it first (four escape headings at full pace, then wall-follow);
-        jump only as the last resort - every walking direction blocked and the goal is above (a ledge)."""
+        jump only as the last resort - every walking direction blocked and the goal is above (a ledge).
+        First of all: a closed door right here is opened (stealthily), not walked around."""
+        if self.open_door_near():
+            return True
         (x, y, z), _ = s['sam']
         p = (x, y, z)
         # stuck again and again in the same few metres while the goal is above: that is a ledge
@@ -491,6 +494,28 @@ class Fisher:
         tap('use', 0.1)
         time.sleep(1.6)
         self._crawl_until = time.monotonic() + 10
+        return True
+
+    def open_door_near(self, radius_cm=250):
+        """A door within reach (interactables list): face it, pick 'Open door stealth' (one wheel notch down in
+        the interaction menu), Space. The wheel is also walk speed, so speed is re-calibrated afterwards."""
+        b = getattr(self, 'brief', None)
+        if b is None:
+            return False
+        s = self.perceive()
+        near = b.near(s['sam'][0], ('door',), radius_cm)
+        if not near or any(t['mood'] not in ('DEAD', 'OUT') and t['d'] < 3.0 for t in s['threats']):
+            return False
+        d, _, name, q = near[0]
+        self.game.release_all()
+        self.face_heading(heading_to(s['sam'][0][:2], q[:2]))
+        time.sleep(0.3)
+        wheel(-1)                                        # OPEN DOOR -> OPEN DOOR STEALTH
+        time.sleep(0.3)
+        tap('use', 0.1)
+        time.sleep(2.5)
+        self.speed_ticks = None                          # the wheel notch may have changed the walk speed
+        self.log('opened door %s stealthily (%.0f cm away)' % (name, d))
         return True
 
     def _push(self, c0, start, max_s, min_m):
@@ -709,6 +734,8 @@ class Fisher:
         r = 'progress'
         for wp in pts[:n]:
             r = self.move_to(wp, budget_s=4.0, tol_m=0.6)
+            if r == 'stuck' and self.open_door_near():   # a closed door on the guards' path
+                r = self.move_to(wp, budget_s=4.0, tol_m=0.6)
             if r.startswith('emergency') or r == 'stuck':
                 return r
         return 'arrived' if len(pts) <= n and r == 'arrived' else 'progress'
@@ -721,9 +748,17 @@ class Fisher:
         idx = nm.piece_index()
         s = self.perceive()
         sam = s['sam'][0]
-        gnode = nm.locate(goal) or nm.nearest(goal, max_dz=1500)[0]
+        if room is not None and s['room'] == room:
+            return 'entered'
+        on_goal = nm.locate(goal)
+        gnode = on_goal or nm.nearest(goal, max_dz=1500)[0]
         gp = idx[gnode]
-        node = nm.locate(sam)
+        gpt = tuple(goal) if on_goal else nm.centre(gnode)    # the floor point nearest the goal
+        last_leg = lambda p, r: (room is not None and r == room) or flat(p, goal) < 1.5
+        node = nm.locate_near(sam)
+        if not on_goal and flat(sam, gpt) < 6.0 and abs(sam[2] - gpt[2]) < 180:
+            # near the end of the floor and the goal is off it: explore the last stretch, do not bounce back
+            return self.explore_to(goal, last_leg, room or 'goal')
         if node is None:
             # off the mesh: the entry point that is close and starts a short area route to the goal
             best = None
@@ -732,7 +767,9 @@ class Fisher:
                 if route is None:
                     continue
                 q = min(pts, key=lambda p: math.hypot(p[0] - sam[0], p[1] - sam[1]) + 2 * abs(p[2] - sam[2]))
-                cost = math.hypot(q[0] - sam[0], q[1] - sam[1]) + 2 * abs(q[2] - sam[2]) + 600 * (len(route) - 1)
+                # every floor change on the way is hard (a staircase, a climb): head for the goal's floor unless
+                # another floor is much closer (stepping back down to the floor just left caused a stair loop)
+                cost = math.hypot(q[0] - sam[0], q[1] - sam[1]) + 2 * abs(q[2] - sam[2]) + 2000 * (len(route) - 1)
                 if best is None or cost < best[0]:
                     best = (cost, k, q)
             if best is None:
@@ -742,11 +779,11 @@ class Fisher:
                 self._entry_log = k
                 self.log('off the mesh: heading for %s at %s' % (nm.names[nm._comps[k] and next(iter(nm._comps[k]))[0]],
                                                               [round(v) for v in q]))
-            r = self.explore_to(q, lambda p, room: nm.locate(p) is not None, 'mesh')
+            r = self.explore_to(q, lambda p, room: idx.get(nm.locate(p)) == k, nm.names[next(iter(nm._comps[k]))[0]])
             return r
         sp = idx[node]
         if sp == gp:
-            pts = nm.path(sam, goal) or [goal]
+            pts = nm.path(sam, gpt) or [gpt]
             return self._follow(pts)
         # the goal is on another floor: walk this floor to its edge nearest the goal, explore from there.
         # (the mesh's own 'crossings' are guesses - closest border points are often a sheer wall)

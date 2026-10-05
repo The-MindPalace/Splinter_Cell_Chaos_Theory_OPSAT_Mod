@@ -138,6 +138,25 @@ class NavMesh:
                     best = (dz, (m, i))
         return best[1] if best else None
 
+    def locate_near(self, p, reach=150.0):
+        """locate(p), or - if p is just past the edge (within reach cm, same height) - the triangle there.
+        Sam's centre slips a few cm outside edge triangles while walking; without this he flips between
+        'on the floor' and 'off the floor' every step."""
+        n = self.locate(p)
+        if n is not None:
+            return n
+        k, _ = self.nearest(p, max_dz=150) or (None, None)
+        if k is None:
+            return None
+        c = self.centre(k)
+        d = math.hypot(c[0] - p[0], c[1] - p[1])
+        for i in range(1, int(min(d, reach) / 25) + 1):
+            f = i * 25 / max(d, 1e-6)
+            n = self.locate((p[0] + (c[0] - p[0]) * f, p[1] + (c[1] - p[1]) * f, p[2]))
+            if n is not None:
+                return n
+        return None
+
     def nearest(self, p, max_dz=400.0):
         """Closest triangle centre to p (3D, height weighted double): (node, distance cm)."""
         best = None

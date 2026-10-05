@@ -59,6 +59,7 @@ class SCCTFisherEnv(SCCTNavEnv):
         if getattr(self, 'map_mode', False):    # mapping: invincible + invisible, so exploring cannot end it
             self.fisher.log('map mode: cheats (god, invisible) = %s' % (self.game.set_cheats(True),))
         self.reached = set()        # rooms entered this episode: the goal never falls back behind them
+        self.td_fail = {}           # guard id -> failed takedown attempts this episode
         xm = self.fisher.explorer()
         xm.unreach.clear()                       # near-misses are per episode; the map has grown since
         for t in xm.tries.values():              # so are failures of known moves: two per episode, then
@@ -102,12 +103,11 @@ class SCCTFisherEnv(SCCTNavEnv):
     def _side_target(self):
         """An unused objective object (crate to scan, file, computer) within 15 m on this floor, while the
         briefing expects scanning here; each gets at most 8 decisions, then it is skipped."""
-        if 'scan' not in self.brief.expect:
-            return None
+        kinds = ('Morgenholt', 'computer') + (('objective object', 'file cabinet') if 'scan' in self.brief.expect else ())
         sam = self.fisher.perceive()['sam'][0]
         used = getattr(self.fisher, '_used', set())
         self._side_tries = getattr(self, '_side_tries', {})
-        for d, kind, name, q in self.brief.near(sam, ('objective object', 'file cabinet', 'computer'), 1500):
+        for d, kind, name, q in self.brief.near(sam, kinds, 1500):
             if name in used or abs(q[2] - sam[2]) > 200 or self._side_tries.get(name, 0) >= 8:
                 continue
             self._side_tries[name] = self._side_tries.get(name, 0) + 1
@@ -208,6 +208,11 @@ class SCCTFisherEnv(SCCTNavEnv):
             t = f.takedown_target(f.perceive())
             note = f.takedown(t) if t else 'no_target'
             r += 2.0 if note == 'ko' else (-0.5 if note == 'no_target' else 0)
+            if t and note != 'ko':                       # failures are remembered: two and that guard is left alone
+                gid = t['g'].get('id')
+                self.td_fail[gid] = self.td_fail.get(gid, 0) + 1
+                if self.td_fail[gid] == 2:
+                    f.log('takedown on guard %s failed twice: leaving him alone this episode' % gid)
         elif name == 'DUMP':
             bodies = self._bodies(s)
             note = f.dump_body(bodies[0]['g'].get('id')) if bodies else 'no_body'
@@ -284,6 +289,9 @@ def baseline_policy(env):
     if env._bodies(s):
         return OPTIONS.index('DUMP')
     t = f.takedown_target(s, max_m=8)
+    no_fight = getattr(env, 'map_mode', False) or 'nofight' in env.brief.expect
+    if t and (no_fight or getattr(env, 'td_fail', {}).get(t['g'].get('id'), 0) >= 2):
+        t = None                                            # mapping, a no-fight room, or he beat us twice
     if t and env.goal and flat(t['g']['loc'], env.goal[2][0]) < flat(s['sam'][0], env.goal[2][0]):
         return OPTIONS.index('TAKEDOWN')                    # a guard between us and the goal
     return OPTIONS.index('ADVANCE')
