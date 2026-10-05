@@ -88,8 +88,8 @@ class ExploreMap:
 
     def seed_from_tracks(self, paths, max_step_m=2.5, max_dt=3.0):
         """Recorded runs (runlog tracks, 2 Hz) are proof of where Sam can walk: every step between two
-        consecutive samples becomes a known open move. Stretches with cheats on ('x') prove nothing and are
-        skipped. Returns the number of moves learned."""
+        consecutive samples becomes a known open move (cheat stretches included: geometry is geometry).
+        Returns the number of moves learned."""
         n = 0
         for path in paths:
             n += self._seed_climbs(path)
@@ -105,9 +105,8 @@ class ExploreMap:
                     continue
                 if 'p' not in d:
                     continue
-                if d.get('x'):
-                    prev = None
-                    continue
+                # cheat stretches ('x': god mode / invisible) still prove where Sam can walk and climb, so they
+                # count for the map; they are excluded only from the stealth-style training data
                 p = d['p']
                 c = self.visit(p[:3], d.get('r'))
                 if prev and d['t'] - prev[0] <= max_dt and c != prev[1]:
@@ -136,10 +135,10 @@ class ExploreMap:
         n = 0
         for i in range(len(smp) - 1):
             a, b = smp[i], smp[i + 1]
-            if a.get('x') or b['t'] - a['t'] > 1.2 or b['p'][2] - a['p'][2] < 60:
+            if b['t'] - a['t'] > 1.2 or b['p'][2] - a['p'][2] < 60:
                 continue
             later = next((d for d in smp[i + 1:] if d['t'] >= a['t'] + 2.0), None)
-            if not later or later['t'] - a['t'] > 4 or later['p'][2] - a['p'][2] < 60 or later.get('x'):
+            if not later or later['t'] - a['t'] > 4 or later['p'][2] - a['p'][2] < 60:
                 continue
             pa, pl = a['p'], later['p']
             if math.hypot(pl[0] - pa[0], pl[1] - pa[1]) > 300:
