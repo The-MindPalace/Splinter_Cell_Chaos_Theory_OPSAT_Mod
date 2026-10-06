@@ -104,6 +104,15 @@ above the courtyard (z 775-849) and ~5 m from its NW corner (1828, -2379). Notes
 floodlight (+2 more counter-clockwise), or climb the pallets by the right-hand tent's crate (works: the crate
 stack at (2142, -2317) climbs to a raised passage z 922-961 running to a nook at (1588, -2547)), or the low
 way: doorway under the bright light, past the tin-roof gazebo, jump onto the roof. Not solved yet.
+Climb surveys found climbs from (20, -26) heading 0 (+224 cm, onto the roof at z ~1130) and from (22, -23)
+heading 270 (+158 cm); Sam reached z 1263 at (1949, -2070), ~3 m short of the tower floor's east edge (x 1680).
+A progress checkpoint is saved up there ("near Southwest Tower").
+
+**Relaunch menus (seen 2026-10-06 06:17 after a crash):** the game opens straight on GAME MODE SELECTION
+(SOLO highlighted). Esc there opens QUIT GAME? (NO is default - Enter = NO). SOLO -> MAIN MENU, where nothing
+is highlighted after the transition; the Enter meant for CONTINUE did nothing. Fix needed in launcher.py:
+no blind Esc; on MAIN MENU press S then W to focus CONTINUE, then Enter; recognise screens from these shots
+(Saved Games/OPSAT/runs/launch/20261006_06*).
 
 ## Level knowledge the bot reads from memory
 

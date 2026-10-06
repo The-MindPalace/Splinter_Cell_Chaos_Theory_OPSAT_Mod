@@ -94,7 +94,15 @@ class SCCTFisherEnv(SCCTNavEnv):
                 self._ckpt = set()
             self._ckpt_mission = mission
         if room in self._ckpt or room not in (self.goal[1] if self.goal else []):
-            return
+            # progress checkpoint: close to the next room's point (7 m, 1.5 m in height) at a spot never saved
+            route = self.goal[1] if self.goal else []
+            nxt = self._next_room(route) if len(route) > 1 else None
+            tgt = s.get('rooms', {}).get(nxt) if nxt else None
+            sam = s['sam'][0]
+            spot = 'near %s @%d,%d,%d' % (nxt, round(sam[0] / 500), round(sam[1] / 500), round(sam[2] / 200))
+            if not tgt or spot in self._ckpt or flat(sam, tgt) > 9 or abs(sam[2] - tgt[2]) > 150:
+                return
+            room = spot
         threats = self.fisher.perceive()['threats']
         if any(t['mood'] in ('ALERT', 'SUSPICIOUS') and t['d'] < 25 for t in threats):
             return
