@@ -108,6 +108,52 @@ Climb surveys found climbs from (20, -26) heading 0 (+224 cm, onto the roof at z
 heading 270 (+158 cm); Sam reached z 1263 at (1949, -2070), ~3 m short of the tower floor's east edge (x 1680).
 A progress checkpoint is saved up there ("near Southwest Tower").
 
+**04 Penthouse - Pranav's blind run (2026-10-08, two attempts, 32 min, video + run log).** Route and geometry
+(coordinates are Sam's pawn, z = body centre):
+- **Alley.** Start (11667, -2235, -66). Two-stage climb at (11005, -1091): +2.3 m, then +1.65 m. The yard
+  beyond, around (10450..11050, 30..1550), holds 4-5 guards. Leave it via (9885, 1392, 62) into the Corridor,
+  then (9558, 1961), where a guard stands at (9374, 2219).
+- **Elevator shaft.** Climb from (9295, 2524, 150) straight up at (9420, 2522) to z ~5036: 35 m in ~30 s,
+  holding forward the whole way. Lit stretches inside the shaft reach light 100-300; nobody is there. At the
+  top: Helipad Storage (9548, 2053, 4798), with a guard at (9786, 2058); then the Helipad (z 5102).
+- **Helipad to the penthouse.**
+  - Wait in the dark by the helipad wall (9297, 2780) for the patroller, then go west via (7701, 2158) to a
+    dark wait at (8060, 1465).
+  - Ladder at (7737, 1143) up to the neon-sign walkway (z 5358). The walkway runs south, (7647, 1079) to
+    (7613, 620), and is brightly LIT (light 100-550): the helipad guards 12 m away went suspicious, then
+    alert, during the crossing (no alarm).
+  - Zip-line from (7541, 620, 5374) west, down to (6356, 437, 5194), then down the cable to the Balcony
+    (z 4487). Objective "Get to Zherkezhi's penthouse" completes there. Cross the sign fast; nothing on it is
+    dark.
+- **Balcony.** Flashlight guard. Wait (6416, 603, 4448), then (5306, -759, 4414) at light 12, then grab him
+  from behind at (5660, -901). The interrogation completes "Find out who the mercenaries work for" and adds
+  "Discover who is in charge of the protection detail".
+- **Construction Floor.** (4794, -473); climb +1.6 m at (4285, -324, 4442); dark line (2955, -31) to (2034,
+  374); stairs up at (1824, 230) to z 4798. Then the Guest Room, with a grab from behind at (2452, -6), and the
+  Kitchen (4605, -403). Objective "Tap the Penthouse video cameras" appears on the way.
+
+**What the run teaches (only the stretches played straight count as style):**
+1. **Crouched almost always** (80-97% in guarded rooms). Average pace 45-60 cm/s including waits. Waits of
+   5-35 s, always in light 0-6, watching guards 2-12 m away before each move.
+2. **Takedowns always from behind** after following the guard: 4 grabs, each from 0.7 m. Sam stands up only
+   for the grab. The grab spot can be lit (light 140 from a wall lamp at the Helipad); what matters is that
+   the guard faces away.
+3. **Carrying a body means standing, and is visible.** At the Helipad, carrying the body through light 82-121
+   made two guards 15-17 m away suspicious, then alert. Carry bodies only along dark lines, or leave them in
+   the dark where they drop.
+4. **Darkness is not enough at 5 m when moving fast.** On the Construction Floor, crouched at light 0, Sam
+   sped up to ~1.9 m/s with guards 4-5 m away and three guards went alert. Within 5 m, pace stays at the
+   slowest step.
+5. **A guard who has just calmed down still turns around.** In the alley, Sam came up behind a guard (130 deg
+   off his facing) 6 s after the yard calmed. He turned at 0.9 m and went alert. Wait 20 s or more after
+   suspicion ends before closing in.
+6. **Never climb furniture under a lamp.** In the Kitchen, stepping onto the counter or table (4553, -379,
+   +0.9 m) lifted Sam into the lamp light (light 85-125) with a guard 7 m away: alert, and the run ended.
+7. **Follow OPSAT INTEL "FROM HERE" step by step.** The INTEL tab was open in every area; its steps were the
+   plan: zip-line by the neon sign; flashlight guard (hop the railing, follow him, stick to the plywood);
+   elevator repairman (creep behind the plastic sheet, jam the light).
+8. **Run blown? Reload.** A guard at 1 m going alert or a body spotted means a quickload, not a fight.
+
 **Relaunch menus (seen 2026-10-06 06:17 after a crash):** the game opens straight on GAME MODE SELECTION
 (SOLO highlighted). Esc there opens QUIT GAME? (NO is default - Enter = NO). SOLO -> MAIN MENU, where nothing
 is highlighted after the transition; the Enter meant for CONTINUE did nothing. Fix needed in launcher.py:
@@ -136,3 +182,8 @@ no blind Esc; on MAIN MENU press S then W to focus CONTINUE, then Enter; recogni
 | 3 | Bank | caught | Dark route + breaker worked; a guard came to check the breaker with a flashlight and met Sam in the alley |
 | 4 | Lighthouse | in progress | New campaign on Normal (save LIGHTHOUSE_BOT). Beach ramp climbed unseen, at the crevice mouth when the game closed (22:43) |
 | 5 | Lighthouse (RL bot, map mode) | Entrance floor | 2026-10-05: explore map seeded from recordings; stuck under the Cavern ledge until the crawlspace was found by hand; then beach -> Entrance floor -> bridge guards alone; a blocked-Space grabbed a guard (fixed) |
+| 6 | Penthouse (Pranav, human) | Kitchen, quit | 2026-10-08: alley -> elevator shaft -> helipad -> neon sign zip-line -> balcony interrogation -> construction floor -> guest room -> kitchen; 4 grabs from behind, 2 objectives done; ended by climbing a kitchen table into lamp light |
+
+Recording a human session: `tools/bot/record_video.py [minutes] [fps]` (game window to MP4 in 10-minute
+segments + frames.csv timestamps matching the run log) and `tools/bot/playstudy.py RUN.jsonl` (rooms, crouch,
+light, pace, waits, guard mood changes, climbs, reloads).
