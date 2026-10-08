@@ -108,51 +108,107 @@ Climb surveys found climbs from (20, -26) heading 0 (+224 cm, onto the roof at z
 heading 270 (+158 cm); Sam reached z 1263 at (1949, -2070), ~3 m short of the tower floor's east edge (x 1680).
 A progress checkpoint is saved up there ("near Southwest Tower").
 
-**04 Penthouse - Pranav's blind run (2026-10-08, two attempts, 32 min, video + run log).** Route and geometry
-(coordinates are Sam's pawn, z = body centre):
-- **Alley.** Start (11667, -2235, -66). Two-stage climb at (11005, -1091): +2.3 m, then +1.65 m. The yard
-  beyond, around (10450..11050, 30..1550), holds 4-5 guards. Leave it via (9885, 1392, 62) into the Corridor,
-  then (9558, 1961), where a guard stands at (9374, 2219).
-- **Elevator shaft.** Climb from (9295, 2524, 150) straight up at (9420, 2522) to z ~5036: 35 m in ~30 s,
-  holding forward the whole way. Lit stretches inside the shaft reach light 100-300; nobody is there. At the
-  top: Helipad Storage (9548, 2053, 4798), with a guard at (9786, 2058); then the Helipad (z 5102).
-- **Helipad to the penthouse.**
-  - Wait in the dark by the helipad wall (9297, 2780) for the patroller, then go west via (7701, 2158) to a
-    dark wait at (8060, 1465).
-  - Ladder at (7737, 1143) up to the neon-sign walkway (z 5358). The walkway runs south, (7647, 1079) to
-    (7613, 620), and is brightly LIT (light 100-550): the helipad guards 12 m away went suspicious, then
-    alert, during the crossing (no alarm).
-  - Zip-line from (7541, 620, 5374) west, down to (6356, 437, 5194), then down the cable to the Balcony
-    (z 4487). Objective "Get to Zherkezhi's penthouse" completes there. Cross the sign fast; nothing on it is
-    dark.
-- **Balcony.** Flashlight guard. Wait (6416, 603, 4448), then (5306, -759, 4414) at light 12, then grab him
-  from behind at (5660, -901). The interrogation completes "Find out who the mercenaries work for" and adds
-  "Discover who is in charge of the protection detail".
-- **Construction Floor.** (4794, -473); climb +1.6 m at (4285, -324, 4442); dark line (2955, -31) to (2034,
-  374); stairs up at (1824, 230) to z 4798. Then the Guest Room, with a grab from behind at (2452, -6), and the
-  Kitchen (4605, -403). Objective "Tap the Penthouse video cameras" appears on the way.
+**04 Penthouse - Pranav's blind run (2026-10-08).** Reviewed frame by frame: 15 min of video (from the Helipad
+on) and the run log (all 32 min). Times are from each attempt's run log. Per area: what OPSAT INTEL said, what
+he did, and why.
 
-**What the run teaches (only the stretches played straight count as style):**
-1. **Crouched almost always** (80-97% in guarded rooms). Average pace 45-60 cm/s including waits. Waits of
-   5-35 s, always in light 0-6, watching guards 2-12 m away before each move.
-2. **Takedowns always from behind** after following the guard: 4 grabs, each from 0.7 m. Sam stands up only
-   for the grab. The grab spot can be lit (light 140 from a wall lamp at the Helipad); what matters is that
-   the guard faces away.
-3. **Carrying a body means standing, and is visible.** At the Helipad, carrying the body through light 82-121
-   made two guards 15-17 m away suspicious, then alert. Carry bodies only along dark lines, or leave them in
-   the dark where they drop.
-4. **Darkness is not enough at 5 m when moving fast.** On the Construction Floor, crouched at light 0, Sam
-   sped up to ~1.9 m/s with guards 4-5 m away and three guards went alert. Within 5 m, pace stays at the
-   slowest step.
-5. **A guard who has just calmed down still turns around.** In the alley, Sam came up behind a guard (130 deg
-   off his facing) 6 s after the yard calmed. He turned at 0.9 m and went alert. Wait 20 s or more after
-   suspicion ends before closing in.
-6. **Never climb furniture under a lamp.** In the Kitchen, stepping onto the counter or table (4553, -379,
-   +0.9 m) lifted Sam into the lamp light (light 85-125) with a guard 7 m away: alert, and the run ended.
-7. **Follow OPSAT INTEL "FROM HERE" step by step.** The INTEL tab was open in every area; its steps were the
-   plan: zip-line by the neon sign; flashlight guard (hop the railing, follow him, stick to the plywood);
-   elevator repairman (creep behind the plastic sheet, jam the light).
-8. **Run blown? Reload.** A guard at 1 m going alert or a body spotted means a quickload, not a fight.
+- **Alley** (run log only, before the video started).
+  - *Route:* OPSAT's high road, exactly. Crates at (11005, -1091) (+2.3 m, +1.65 m), up the fire escape to
+    z 1027, 9 m north along the ledge, down the drainpipe at (10530, 3).
+  - *The yard below:* 4-5 National Guard around (10450..11050, 30..1550). **Both straight attempts were
+    spotted here.**
+    1. He crept up behind a guard (130 deg off his facing) 6 s after the yard had calmed down from suspicious.
+       The guard turned at 0.9 m.
+    2. Three guards went suspicious at 5-8 m in light 8.
+  - *Gap in OPSAT:* its tips stop at the drainpipe. The yard itself has none (the walkthrough's street option,
+    shoot the big spotlight and OCP the second, was not tried).
+  - *Yard route used in the end (geometry):* (10474, 550) -> (10904, 753) -> (10825, 1094) wait ->
+    (11009, 1209) -> (11105, 1602) -> (10780, 1839) -> (10476, 1539) -> (10044, 1378, z 62) -> Corridor.
+- **Corridor and shaft.** Grabbed the guard at (9374, 2219) from behind. Skipped the elevator and climbed the
+  shaft ladder (the walkthrough's "long ladder") from (9295, 2524) to the top, z ~5036, in about 30 s.
+- **Helipad, attempt 1.**
+  - Read INTEL for 30 s in the dark by the pipes.
+  - Used the light switch (SWITCH OBJECT, 21:20). A guard came to inspect the box. Sam waited 3.4 m behind him
+    for 25 s while he faced it, grabbed him (21:52), interrogated him, knocked him out and left the body in the
+    dark.
+  - Then he stood up and walked into the helicopter spotlight (22:24, light 83 -> 213). The two pad guards
+    (15 m) went suspicious, then alert: reload.
+- **Helipad, attempt 2 - the adaptation.**
+  1. The same switch (00:26), now used as a **decoy**: the three pad guards went suspicious and turned toward
+     its dark corner (00:36).
+  2. He went the other way, round the dark west side behind the ramp and crates (00:48-01:12), and waited 22 s.
+  3. He **OCP'd the floodlight** (01:04; the laser is red while the OCP recharges; again at 01:12) and crossed
+     during the blackout (01:13-01:20).
+  4. At the base of the sign he re-read INTEL (01:28-01:38) and climbed when the guards turned back (01:40).
+  5. The sign walkway is bright (light 130-550). The pad guards saw him at 12 m (alert 01:48), but he was
+     already on the zip-line. Objective done 01:52; **saved straight away** (02:06).
+  - *OPSAT:* FROM HERE suggested the passive plan (pipes, dark structure, wait for the talk), which he never
+    used. Everything that worked (switch, floodlight OCP) was in FOR THE OBJECTIVE. The one step there he
+    skipped, "OCP the AXE sign", is the one that got him seen.
+- **Balcony.**
+  - **OCP'd the walkway lamps first** (02:24-02:27: the OCP bar drains, the lamps die, light 33 -> 12).
+  - Waited in a dark corner while the flashlight beam swept past at 1.8 m (02:52-03:04). Grabbed him from
+    behind as he passed (03:06).
+  - **Dragged him about 9 m into total dark** (light 0) before interrogating (03:20-03:54): who the mercs work
+    for. Left the body there.
+  - *OPSAT:* FROM HERE showed three ways to sneak past. The tip he actually used ("knock him out; he tells you
+    who the mercs work for") is 4th in hints.json and the panel shows only 3.
+- **Construction Floor.**
+  - Behind the cabinet (FROM HERE tip 1), then the **high crawl space** (04:44). The crawl space is only in the
+    floor-plans objective notes, not in FROM HERE. Out by the plastic sheet.
+  - OCP'd lights at 05:06 and 05:32.
+  - **The alert, and why:** right after the second jam he hurried across in the dark at ~2 m/s, because a jam
+    only lasts seconds. The **noise meter** (the bar above the weapon) filled to 5 segments at 05:36-05:37. The
+    guard 6.6 m away, walking toward him, went alert at 05:37.0; two more followed.
+  - He then picked the locked door in the dark while they searched (05:44-05:56) and took the fire-escape
+    stairs.
+- **Guest Room (music room).**
+  - OCP'd the lamp over the door; he waited ~10 s with the red laser on it until the charge came back.
+  - Inside, the room went dark (switch by the door) and the seated guard got up to search (06:50). Sam stayed
+    still, followed him at 4-5 m and grabbed him from behind (07:24).
+  - Dragged him into the dark corner and interrogated him (07:28-08:06), then knocked him out.
+  - Out through the patio (OCP'd a light, switch by the glass door) into the Kitchen.
+- **Kitchen.**
+  - Watched from the dark side (08:54-09:02), selected the Sticky Shocker (09:10), climbed the island counter
+    and went along the wall to the fern (OPSAT tip). Nobody noticed.
+  - Aimed at the patroller standing alone at (5221, 162) and pressed **left click: the SC-20K fired a 7-round
+    burst** (30/60 -> 23/53, 09:36-09:38). Every guard on the floor went alert (6 -> 9); he quit.
+  - **Sticky shocker / launcher = right click (AltFire); middle click = scope; left click = bullets.**
+
+**His playbook, as the bot should copy it:**
+1. Read INTEL in the dark before each area, then act on it, re-reading at decision points (sign base).
+2. **Kill the light before moving.** OCP the lamp or floodlight on the path; if the laser is red, wait for the
+   charge rather than going without it.
+3. **Use switches as decoys.** Guards walk to a switched-off light. Either go the other way (Helipad 2) or take
+   the guard who comes to check it (Helipad 1, Guest Room).
+4. **Takedowns from behind**, timed for when the guard walks past or faces something (the switch box). Always
+   drag him into full dark before interrogating. Leave the body in the dark.
+5. Save right after a hard crossing.
+6. Adapt between attempts: the same switch was a takedown opportunity the first time and a decoy the second,
+   once the first plan led into the spotlight.
+
+**What actually caused each detection (darkness never failed on its own):**
+- Standing up in a spotlight (Helipad 1).
+- The lit sign walkway without jamming it (Helipad 2; no harm, already zipping).
+- Hurrying through an OCP window: noise (Construction Floor).
+- Coming up behind a guard who had just calmed down (Alley).
+- The wrong fire button (Kitchen).
+
+**Bot rules from this:**
+- Jam before crossing a lit stretch. Cross a jam at the slowest crouch; if the window is too short, re-jam
+  instead of running.
+- Never stand in light except for the grab.
+- Interrogate only at light < 5.
+- Non-lethal shots use AltFire.
+- Spotlit open ground is crossed only during a blackout.
+- No approach within 20 s of a guard calming down.
+
+**OPSAT INTEL findings (from this run):**
+- The panel shows only 3 FROM HERE tips, and FOR THE OBJECTIVE is squeezed to about 1.
+- Where his route differed (Helipad, Balcony, Construction Floor), the tips that worked were hidden or sat in
+  the small objective block.
+- The Alley yard has no tips at all.
+- INTEL lagged a room at the Construction Floor door (04:16-04:26 still showed the Balcony).
 
 **Relaunch menus (seen 2026-10-06 06:17 after a crash):** the game opens straight on GAME MODE SELECTION
 (SOLO highlighted). Esc there opens QUIT GAME? (NO is default - Enter = NO). SOLO -> MAIN MENU, where nothing
@@ -182,8 +238,11 @@ no blind Esc; on MAIN MENU press S then W to focus CONTINUE, then Enter; recogni
 | 3 | Bank | caught | Dark route + breaker worked; a guard came to check the breaker with a flashlight and met Sam in the alley |
 | 4 | Lighthouse | in progress | New campaign on Normal (save LIGHTHOUSE_BOT). Beach ramp climbed unseen, at the crevice mouth when the game closed (22:43) |
 | 5 | Lighthouse (RL bot, map mode) | Entrance floor | 2026-10-05: explore map seeded from recordings; stuck under the Cavern ledge until the crawlspace was found by hand; then beach -> Entrance floor -> bridge guards alone; a blocked-Space grabbed a guard (fixed) |
-| 6 | Penthouse (Pranav, human) | Kitchen, quit | 2026-10-08: alley -> elevator shaft -> helipad -> neon sign zip-line -> balcony interrogation -> construction floor -> guest room -> kitchen; 4 grabs from behind, 2 objectives done; ended by climbing a kitchen table into lamp light |
+| 6 | Penthouse (Pranav, human) | Kitchen, quit | 2026-10-08: alley high road -> elevator shaft -> helipad (attempt 2: switch decoy + floodlight OCP) -> neon sign zip-line -> balcony interrogation -> crawl space -> guest room -> kitchen; 4 grabs from behind, 2 objectives; ended by a left-click rifle burst meant to be a sticky shocker (right click) |
 
-Recording a human session: `tools/bot/record_video.py [minutes] [fps]` (game window to MP4 in 10-minute
-segments + frames.csv timestamps matching the run log) and `tools/bot/playstudy.py RUN.jsonl` (rooms, crouch,
-light, pace, waits, guard mood changes, climbs, reloads).
+Recording a human session (start it BEFORE playing): `tools/bot/record_video.py [minutes] [fps=6]` - game window
+to MP4 in 10-minute segments, frames.csv timestamps matching the run log, inputs.csv (keys and mouse buttons,
+only while the game is in front). Review: `tools/bot/playstudy.py RUN.jsonl` for the timeline, then
+`tools/bot/framesheet.py VIDEO_DIR RUN.jsonl FROM TO STEP OUT.jpg [--hud]` to look at every moment that matters
+(--hud enlarges ammo, OCP charge and noise meter). Explain each event from the frames before writing a lesson:
+position data alone gave three wrong causes in the first write-up of run 6.
