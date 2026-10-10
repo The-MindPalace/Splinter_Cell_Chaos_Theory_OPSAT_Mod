@@ -210,6 +210,97 @@ he did, and why.
 - The Alley yard has no tips at all.
 - INTEL lagged a room at the Construction Floor door (04:16-04:26 still showed the Balcony).
 
+**04 Penthouse - Pranav, second day (2026-10-10).** Three sittings (14:18, 16:08, 16:27). The last one is on
+video with every key and mouse button (inputs.csv); the first two are log-only.
+
+**Helipad practice: 13 attempts, all from the Helipad Storage save.**
+- *Watchers:* the sign ladder and its approach (7737..8179, 963..1143) are lit (47-143). Three guards cover it:
+  the patroller on the y ~1610 line, (9028, 1262), and (8188, 1609).
+- *Failures, all variations of being lit in their view:*
+  - stepping out at light 42-52 within 2-6 m of the patroller;
+  - climbing the ladder standing at light 53-143 while they faced it;
+  - (8179, 963) at light 97, 6.9 m from a guard.
+- *New hiding spot he found:* a dark nook at (8462, 620-720, z 5136), light 0, guards 7-10 m. He returned to it
+  in every later attempt and waited 40-80 s there.
+- *One attempt took the patroller from behind* as he passed (8736, 1609) and carried him 11 m to the nook. The
+  next patroller passed ~7.6 m from the body 40 s later and went alert with a second guard. A body dropped at the
+  nook mouth is not hidden.
+- *Video attempt 1:*
+  1. Hopped the pipes (Shift x3, OPSAT tip 1).
+  2. Selected the Sticky Shocker (quick inventory, 00:32).
+  3. Scoped the two pad guards at 22 m, cycling vision modes with the number keys (00:44-01:12).
+  4. Crept to 7 m from the guard under the wall lamp and pressed **left click: one rifle round**
+     (30/60 -> 29/59, 01:32.5). Noise meter spike, three guards alert at 01:33.0. The right clicks that followed
+     (01:33.5, 01:35) did fire shockers (3 -> 1), too late.
+  - **The same slip as the 10-08 kitchen: with the SC-20K out, left click is the rifle even when the shocker
+    is selected. Right click fires the attachment.**
+- *The crossing that worked (video, 02:46-03:22):*
+  1. The pad guards were already pulled east, suspicious since 02:36, when the corridor lamp by the switch box
+     went dark.
+  2. He scoped the floodlight; the laser stayed red until the OCP had charged. Jammed it at 03:04 and crossed
+     during the blackout (03:06-03:12).
+  3. Up the ladder (03:14) and over the lit sign (light 173) while the three guards were 18-20 m away, facing
+     the other way.
+  4. Zip-line; objective done 03:23.
+  - **The same lit sign that got him seen on 10-08 and in three attempts today is safe once the guards have been
+    drawn off and are looking away.**
+
+**Penthouse floors (video).**
+- **Balcony.**
+  - *First try:* grabbed the flashlight guard, then pressed right click (knock out) before interrogating. That
+    loses "who the mercs work for", so he loaded his PENTHOUSE_HELICOPTER_PASSED save.
+  - *Second try:* grab (04:36), Space repeatedly until the interrogation ends (04:40-04:56), then right click
+    (04:58). Objective done. **Held guard: Space = interrogate, right click = knock out. Always interrogate
+    first.**
+- **Construction Floor, clean.**
+  - Cabinet, then the crawl space (Space, 05:30; EXIT at 05:44).
+  - He walked past the napping guard at 3-4 m at a crouch (06:00-06:08), picked the door (06:14-06:28) and
+    jammed the stair light (06:36-06:40).
+  - Two guards went suspicious while he was in the crawl space and calmed down. No alert: **on 10-08 the alert
+    came from jamming the hall light and then hurrying; this time no jam there, no hurry.**
+- **Guest Room, no takedown.**
+  - He jammed the room lamp with the seated guard 3.3 m away (07:06-07:08). The guard got up to search; Sam went
+    to night vision and slipped past behind him along the wall (07:10-07:22).
+  - Jammed the patio light and went out into the Kitchen. This is OPSAT's tip, done exactly.
+- **Kitchen.**
+  - *Two takedowns,* both from behind in the dark on moving guards: a searching guard (07:58), then a patroller
+    (08:36). Each was dragged to light 0 first.
+  - *The second guard's interrogation* (08:42-09:16) **completed "Discover who is in charge of the protection
+    detail" (08:54)**. OPSAT's data says the greenhouse guard upstairs gives it.
+  - Then the hallway by the fern, where the 10-08 run ended: no shot this time.
+- **Living Room.**
+  - Jammed light after light (scope, right click, scope out, about 10 times on this floor).
+  - Crept past the TV guard at 1.0-1.3 m in TV glow (light 50); he never reacted. OPSAT tip confirmed: he only
+    reacts to noise.
+  - Up the stairs jamming the hallway lamps.
+- **Zherkezhi's Room - the end.**
+  - He used a computer under the monitor wall (SHUTDOWN COMPUTER / SWITCH OBJECT, then a file screen,
+    11:01-11:06). The screens lit Sam to 115.
+  - OPSAT's radar read **FACING YOU 2** the whole time. The two guards went alert as he walked off (11:09-11:10);
+    he quit.
+  - **Check the radar's FACING YOU count before using anything that lights up. Computers and monitor walls light
+    Sam like a lamp.**
+
+**What changed from the first day (his adaptation):**
+- The OCP is now his main tool: scope (middle click), jam (right click), unscope, before every lit stretch.
+- He waits for the charge instead of moving without it.
+- Decoys (switch or jammed lamp) pull guards before the risky climb.
+- No hurrying after a jam.
+- Interrogate before knocking out.
+- Skip takedowns where passing behind works (Guest Room).
+- Every alert today traced to one of four things:
+  - being lit in a guard's view (Helipad ladder, Zherkezhi's computer);
+  - the left-click rifle (Helipad);
+  - a body left at the edge of a dark spot;
+  - the wrong order with a held guard (which cost an objective, not an alert).
+
+**OPSAT INTEL findings:**
+- The detail-chief objective (Objective_0008) comes from the kitchen patroller too, much earlier than the
+  greenhouse guard in walkthrough.json.
+- The Helipad decoy also works by jamming the corridor lamp by the switch box.
+- The Guest Room and TV-guard tips are right as written.
+- OPSAT's radar FACING YOU count was the warning that mattered in Zherkezhi's room.
+
 **Relaunch menus (seen 2026-10-06 06:17 after a crash):** the game opens straight on GAME MODE SELECTION
 (SOLO highlighted). Esc there opens QUIT GAME? (NO is default - Enter = NO). SOLO -> MAIN MENU, where nothing
 is highlighted after the transition; the Enter meant for CONTINUE did nothing. Fix needed in launcher.py:
@@ -239,6 +330,7 @@ no blind Esc; on MAIN MENU press S then W to focus CONTINUE, then Enter; recogni
 | 4 | Lighthouse | in progress | New campaign on Normal (save LIGHTHOUSE_BOT). Beach ramp climbed unseen, at the crevice mouth when the game closed (22:43) |
 | 5 | Lighthouse (RL bot, map mode) | Entrance floor | 2026-10-05: explore map seeded from recordings; stuck under the Cavern ledge until the crawlspace was found by hand; then beach -> Entrance floor -> bridge guards alone; a blocked-Space grabbed a guard (fixed) |
 | 6 | Penthouse (Pranav, human) | Kitchen, quit | 2026-10-08: alley high road -> elevator shaft -> helipad (attempt 2: switch decoy + floodlight OCP) -> neon sign zip-line -> balcony interrogation -> crawl space -> guest room -> kitchen; 4 grabs from behind, 2 objectives; ended by a left-click rifle burst meant to be a sticky shocker (right click) |
+| 7 | Penthouse (Pranav, human) | Zherkezhi's Room, quit | 2026-10-10: 13 Helipad attempts, clean crossing with decoy + floodlight OCP; balcony interrogation (redone after knocking out first); clean construction floor and guest room; two kitchen takedowns, detail-chief objective from the kitchen guard; TV guard passed at 1 m; seen at Zherkezhi's lit computer |
 
 Recording a human session (start it BEFORE playing): `tools/bot/record_video.py [minutes] [fps=6]` - game window
 to MP4 in 10-minute segments, frames.csv timestamps matching the run log, inputs.csv (keys and mouse buttons,
